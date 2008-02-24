@@ -1,7 +1,8 @@
 Source: slime
 Section: devel
 Priority: optional
-Maintainer: Peter Van Eynde <pvaneynd@debian.org>
+Maintainer: Debian Common Lisp Team <pkg-common-lisp-devel@lists.alioth.debian.org>
+Uploaders: Peter Van Eynde <pvaneynd@debian.org>
 Build-Depends: debhelper (>= 4.0.0)
 Build-Depends-Indep: dh-lisp, texlive-generic-recommended, texlive-extra-utils, texlive, texinfo
 Standards-Version: 3.7.2.0
