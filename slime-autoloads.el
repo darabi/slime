@@ -47,6 +47,8 @@ CONTRIBS is a list of contrib packages to load."
         (when (fboundp init)
           (funcall init))))))
 
+(slime-setup)
+
 (provide 'slime-autoloads)
 
 ;;; slime-autoloads.el ends here

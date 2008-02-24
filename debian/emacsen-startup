@@ -1,0 +1,35 @@
+;; -*-emacs-lisp-*-
+;;
+;; Emacs startup file for the Debian slime package
+;;
+;; Originally contributed by Nils Naumann <naumann@unileoben.ac.at>
+;; Modified by Dirk Eddelbuettel <edd@debian.org>
+;; Adapted for dh-make by Jim Van Zandt <jrv@vanzandt.mv.com>
+
+;; The slime package follows the Debian/GNU Linux 'emacsen' policy and
+;; byte-compiles its elisp files for each 'emacs flavor' (emacs19,
+;; xemacs19, emacs20, xemacs20...).  The compiled code is then
+;; installed in a subdirectory of the respective site-lisp directory.
+;; We have to add this to the load-path:
+(let ((package-dir (concat "/usr/share/"
+                           (if (boundp 'flavor) (symbol-name flavor)
+			     "emacs")
+                           "/site-lisp/slime")))
+  (when (file-directory-p package-dir)
+        (setq load-path (cons package-dir 
+	                      (cons (concat package-dir "/contrib")
+			            load-path)))))
+
+(setq slime-backend
+      "/usr/share/common-lisp/source/slime/swank-loader.lisp")
+
+(load (concat "/usr/share/"
+	      (if (boundp 'flavor) (symbol-name flavor)
+	          "emacs")
+            "/site-lisp/slime/slime-autoloads"))
+
+(eval-after-load "slime"
+  '(progn
+    (slime-setup '(slime-fancy slime-asdf slime-banner))
+    (setq slime-complete-symbol*-fancy t)
+    (setq slime-complete-symbol-function 'slime-fuzzy-complete-symbol)))

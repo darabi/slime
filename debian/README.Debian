@@ -1,0 +1,23 @@
+SLIME for Debian
+----------------
+
+ IT'S SLIME. 
+
+ SLIME is the Superior Lisp Interaction Mode for Emacs. 
+
+ See: http://www.common-lisp.net/project/slime/
+ Also: http://www.cliki.net/Slime/
+
+ 
+ Please note that this version is based on the current CVS
+ version of slime, which is incompatible with the old
+ 'release' of slime that is no longer maintained, supported
+ and never will be updated. In slime the CVS HEAD (latest
+ current version) is 'the place to be'.
+
+ Trying to connect to a lisp running an older swank
+ implementation can result in strange and sometimes fatal
+ errors.
+
+Removed the xref.lisp file due to license problems. This means no
+xref on clisp.

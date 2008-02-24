@@ -1,0 +1,3 @@
+usr/share/lintian/overrides
+usr/share/emacs/site-lisp/slime
+usr/share/emacs/site-lisp/slime/contrib

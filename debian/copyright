@@ -1,0 +1,148 @@
+This package was debianized by Sean Champ <schamp@commonwerx.org> on
+Sat, 28 Aug 2004 10:41:53 -0700.
+
+Then it was shamelessly ripped by Peter Van Eynde and uploaded.
+
+It was downloaded from: 
+  http://common-lisp.net/project/slime/slime-1.0.tar.gz
+
+Upstream Authors:  
+  Luke Gorrie, Helmut Eller, James Bielman, Daniel Barlow, and other
+  contributors
+
+Copyright:
+
+
+  SLIME is free software. All files, unless explicitly stated
+  otherwise, are public domain.
+
+These files with a different license are:
+
+GPL:
+
+	swank-clisp.lisp
+	;;;; Copyright (C) 2003, 2004 W. Jenkner, V. Sedach
+	
+	bridge.el
+	;;; Copyright (C) 1991 Chris McConnell, ccm@cs.cmu.edu  
+	
+	hyperspec.el
+	;; Copyright 1997 Naggum Software
+	;; Author: Erik Naggum <erik@naggum.no>
+	
+	slime.el
+	;;     Copyright (C) 2003  Eric Marsden, Luke Gorrie, Helmut Eller
+	;;     Copyright (C) 2004  Luke Gorrie, Helmut Eller
+	
+	tree-widget.el
+	;; Copyright (C) 2004 Free Software Foundation, Inc.
+	
+	On Debian systems, the complete text of the GNU General
+	Public License can be found in `/usr/share/common-licenses/GPL'.
+
+LLGPL:
+
+	swank-openmcl.lisp
+	;;; Copyright (C) 2003, James Bielman  <jamesjb@jamesjb.com>
+
+        ;;; This program is licensed under the terms of the Lisp Lesser GNU
+        ;;; Public License, known as the LLGPL, and distributed with OpenMCL
+        ;;; as the file "LICENSE".  The LLGPL consists of a preamble and the
+        ;;; LGPL, which is distributed with OpenMCL as the file "LGPL".  Where
+        ;;; these conflict, the preamble takes precedence.
+        ;;;
+        ;;; The LLGPL is also available online at
+        ;;; http://opensource.franz.com/preamble.html
+
+The full text of the preamble is:
+
+        Preamble to the Gnu Lesser General Public License
+        -------------------------------------------------
+        Copyright (c) 2000 Franz Incorporated, Berkeley, CA 94704
+        
+        The concept of the GNU Lesser General Public License version 2.1
+        ("LGPL") has been adopted to govern the use and distribution of
+        above-mentioned application. However, the LGPL uses terminology that
+        is more appropriate for a program written in C than one written in
+        Lisp. Nevertheless, the LGPL can still be applied to a Lisp program if
+        certain clarifications are made. This document details those
+        clarifications. Accordingly, the license for the open-source Lisp
+        applications consists of this document plus the LGPL. Wherever there
+        is a conflict between this document and the LGPL, this document takes
+        precedence over the LGPL.
+        
+        A "Library" in Lisp is a collection of Lisp functions, data and
+        foreign modules. The form of the Library can be Lisp source code (for
+        processing by an interpreter) or object code (usually the result of
+        compilation of source code or built with some other
+        mechanisms). Foreign modules are object code in a form that can be
+        linked into a Lisp executable. When we speak of functions we do so in
+        the most general way to include, in addition, methods and unnamed
+        functions. Lisp "data" is also a general term that includes the data
+        structures resulting from defining Lisp classes. A Lisp application
+        may include the same set of Lisp objects as does a Library, but this
+        does not mean that the application is necessarily a "work based on the
+        Library" it contains.
+        
+        The Library consists of everything in the distribution file set before
+        any modifications are made to the files. If any of the functions or
+        classes in the Library are redefined in other files, then those
+        redefinitions ARE considered a work based on the Library. If
+        additional methods are added to generic functions in the Library,
+        those additional methods are NOT considered a work based on the
+        Library. If Library classes are subclassed, these subclasses are NOT
+        considered a work based on the Library. If the Library is modified to
+        explicitly call other functions that are neither part of Lisp itself
+        nor an available add-on module to Lisp, then the functions called by
+        the modified Library ARE considered a work based on the Library. The
+        goal is to ensure that the Library will compile and run without
+        getting undefined function errors.
+        
+        It is permitted to add proprietary source code to the Library, but it
+        must be done in a way such that the Library will still run without
+        that proprietary code present. Section 5 of the LGPL distinguishes
+        between the case of a library being dynamically linked at runtime and
+        one being statically linked at build time. Section 5 of the LGPL
+        states that the former results in an executable that is a "work that
+        uses the Library." Section 5 of the LGPL states that the latter
+        results in one that is a "derivative of the Library", which is
+        therefore covered by the LGPL. Since Lisp only offers one choice,
+        which is to link the Library into an executable at build time, we
+        declare that, for the purpose applying the LGPL to the Library, an
+        executable that results from linking a "work that uses the Library"
+        with the Library is considered a "work that uses the Library" and is
+        therefore NOT covered by the LGPL.
+        
+        Because of this declaration, section 6 of LGPL is not applicable to
+        the Library. However, in connection with each distribution of this
+        executable, you must also deliver, in accordance with the terms and
+        conditions of the LGPL, the source code of Library (or your derivative
+        thereof) that is incorporated into this executable.
+
+	
+BSD-like:
+
+	swank-corman.lisp
+
+	;;; License
+	;;; =======
+	;;; This software is provided 'as-is', without any express or implied
+	;;; warranty. In no event will the author be held liable for any damages
+	;;; arising from the use of this software.
+	;;;
+	;;; Permission is granted to anyone to use this software for any purpose,
+	;;; including commercial applications, and to alter it and redistribute
+	;;; it freely, subject to the following restrictions:
+	;;;
+	;;; 1. The origin of this software must not be misrepresented; you must
+	;;;    not claim that you wrote the original software. If you use this
+	;;;    software in a product, an acknowledgment in the product documentation
+	;;;    would be appreciated but is not required.
+	;;;
+	;;; 2. Altered source versions must be plainly marked as such, and must
+	;;;    not be misrepresented as being the original software.
+	;;;
+	;;; 3. This notice may not be removed or altered from any source 
+	;;;    distribution.
+	;;;
+

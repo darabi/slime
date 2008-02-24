@@ -583,6 +583,7 @@ Execute BODY with NAME's function slot set to FUNCTION."
 
 ;;;; Portable XREF from the CMU AI repository.
 
+#| PVE remove xref
 (setq pxref::*handle-package-forms* '(cl:in-package))
 
 (defmacro defxref (name function)
@@ -595,6 +596,7 @@ Execute BODY with NAME's function slot set to FUNCTION."
 (defxref who-sets       pxref:list-setters)
 (defxref list-callers   pxref:list-callers)
 (defxref list-callees   pxref:list-callees)
+|#
 
 (defun xref-results (symbols)
   (let ((xrefs '()))

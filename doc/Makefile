@@ -16,7 +16,7 @@ infofiles=slime.info
 
 TEXI = slime.texi contributors.texi
 
-all: slime.info slime.pdf html/index.html
+all: slime.ps slime.info slime.html slime.pdf html/index.html slime-refcard.pdf
 
 slime.dvi: $(TEXI)
 	texi2dvi slime.texi
@@ -35,6 +35,9 @@ html/index.html: $(TEXI)
 
 slime.pdf: $(TEXI)
 	texi2pdf $<
+
+slime-refcard.pdf: slime-refcard.tex
+	texi2pdf $<	
 
 install: install-info
 
@@ -93,5 +96,6 @@ uninstall-info:
 clean:
 	rm -f contributors.texi
 	rm -f slime.{aux,cp,cps,fn,fns,ky,kys,log,pg,tmp,toc,tp,vr,vrs}
-	rm -f slime.{info,pdf,dvi,ps,html}
+	rm -f slime.{info,pdf,dvi,ps,html,kys,fns,vrs}
+	rm -f slime-refcard.{aux,log,pdf}
 	rm -rf html

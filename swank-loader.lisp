@@ -42,7 +42,7 @@
    #+openmcl '("metering" "swank-openmcl" "swank-gray")
    #+lispworks '("swank-lispworks" "swank-gray")
    #+allegro '("swank-allegro" "swank-gray")
-   #+clisp '("xref" "metering" "swank-clisp" "swank-gray")
+   #+clisp '("metering" "swank-clisp" "swank-gray")
    #+armedbear '("swank-abcl")
    #+cormanlisp '("swank-corman" "swank-gray")
    #+ecl '("swank-ecl" "swank-gray")
@@ -105,7 +105,7 @@ operating system, and hardware architecture."
 (defun slime-version-string ()
   "Return a string identifying the SLIME version.
 Return nil if nothing appropriate is available."
-  (with-open-file (s (merge-pathnames "ChangeLog" *source-directory*)
+  (with-open-file (s "/usr/share/doc/cl-swank/changelog" 
                      :if-does-not-exist nil)
     (and s (symbol-name (read s)))))
 
@@ -119,10 +119,14 @@ Return nil if nothing appropriate is available."
 
 (defun binary-pathname (src-pathname binary-dir)
   "Return the pathname where SRC-PATHNAME's binary should be compiled."
+  (declare (ignore binary-directory))
   (let ((cfp (compile-file-pathname src-pathname)))
-    (merge-pathnames (make-pathname :name (pathname-name cfp)
-                                    :type (pathname-type cfp))
-                     binary-dir)))
+    (merge-pathnames (make-pathname 
+                      :directory
+                      `(:relative "swank" "fasl" ,(unique-directory-name))
+                      :name (pathname-name cfp)
+                      :type (pathname-type cfp))
+                     (clc:calculate-fasl-root))))
 
 (defun handle-loadtime-error (condition binary-pathname)
   (pprint-logical-block (*error-output* () :per-line-prefix ";; ")
@@ -211,7 +215,7 @@ If LOAD is true, load the fasl file."
 
 (defun compile-contribs (&key (src-dir (contrib-dir *source-directory*))
                          (fasl-dir (contrib-dir *fasl-directory*)))
-  (compile-files (src-files *contribs* src-dir) fasl-dir nil))
+  (compile-files (src-files *contribs* src-dir) fasl-dir t))
 
 (defun setup ()
   (flet ((q (s) (read-from-string s)))

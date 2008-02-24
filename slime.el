@@ -97,7 +97,7 @@ Emacs Lisp package."))
   (defun slime-changelog-date ()
     "Return the datestring of the latest entry in the ChangeLog file.
 Return nil if the ChangeLog file cannot be found."
-    (let ((changelog (concat slime-path "ChangeLog")))
+    (let ((changelog "/usr/share/doc/cl-swank/changelog"))
       (if (file-exists-p changelog)
           (with-temp-buffer 
             (insert-file-contents changelog nil 0 100)

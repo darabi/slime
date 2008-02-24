@@ -1,0 +1,70 @@
+slime (2:1.0.cvs-20050116) unstable; urgency=low
+
+  * building SLIME from sources fetched via CVS, January 16, 2005, 04:36 PST
+  * gratuitously applying the -packageversion as an identifier of
+    CVS-source-fetch-date (timestamp)
+
+ -- Sean Champ <schamp@commonwerx.org>  Sun, 16 Jan 2005 04:40:07 -0800
+
+slime (1:1.0-5) unstable; urgency=low
+
+  * ./debian/rules : now leaving the SLIME 'changelog' file not-gzipped
+     see next.
+  * ./debian/emacsen-install now symlinking 'changelog' into $ELCDIR/Changelog, 
+     - this is required, for the function `slime-changelog-date' to work
+     correctly, in slime.el 
+  * ./debian/README.Debian : adding a recommendation about using
+    '(slime-setup)'
+  * these changes are courtesy of a note from Matthew Blakley
+
+ -- Sean Champ <schamp@commonwerx.org>  Wed, 22 Sep 2004 13:43:10 -0700
+
+slime (1:1.0-4) unstable; urgency=low
+
+  * well, hey, i'm adding the swank.asd from Slime CVS - but keeping it as
+    ./debian/swank.asd, however, so that we won't mistake it as "the real, most
+    current, upstream slime.asd", which might ever appear in ./debian/../ again
+  * note: this revision should not have the problem about the symlink at 
+    /usr/share/common-lisp/systems/swank.asd being to a nonexisting file -
+    as, in the prior 1:1.0 revisions, it was.
+  * undoing the changes made in the prior revision - uncommenting the
+    lines that, in the prior revision, were commented-out in
+    ./debian/prerm and ./debian/postinst
+  * ./debian/control : use Section: contrib/devel for the source package,
+    also
+
+ -- Sean Champ <schamp@commonwerx.org>  Sat, 11 Sep 2004 16:33:23 -0700
+
+slime (1:1.0-3) unstable; urgency=low
+
+  * ./debian/postinst , ./debian/prerm : comment-out the clc operations
+    (there is no swank.asd in slime-1.0.tar.gz)
+  * ./debian/prerm : uncomment the previously-commented-out call, to have
+    install-info remove the info file
+
+ -- Sean Champ <schamp@commonwerx.org>  Fri, 10 Sep 2004 04:05:35 -0700
+
+slime (1:1.0-2) unstable; urgency=low
+
+  * ./debian/emacsen-startup : cushion for when 'flavor' is not bound - in
+    the style of the ilisp emacsen-startup file
+  * ./debian/emacsen-install : symlink source files into the ${ELCDIR} so
+    that `find-library' will find them
+
+ -- Sean Champ <schamp@commonwerx.org>  Tue,  7 Sep 2004 17:54:31 -0700
+
+slime (1:1.0-1) unstable; urgency=low
+
+  * upstream release; building from the official slime-1.0.tar.gz
+  * now installing PROBLEMS file - "We're no longer alpha."
+  * now installing ps and pdf manuals - had overlooked those before
+  
+ -- Sean Champ <schamp@commonwerx.org>  Tue,  7 Sep 2004 06:51:25 -0700
+
+slime (1.0.20040620-1) unstable; urgency=low
+
+  * Initial SLIME debian package. sources fetched from CVS. last ChangeLog
+    entry is dated 2004-06-20
+
+ -- Sean Champ <schamp@commonwerx.org>  Sat, 28 Aug 2004 10:41:53 -0700
+

@@ -1,0 +1,46 @@
+Source: slime
+Section: devel
+Priority: optional
+Maintainer: Peter Van Eynde <pvaneynd@debian.org>
+Build-Depends: debhelper (>= 4.0.0)
+Build-Depends-Indep: dh-lisp, texlive-generic-recommended, texlive-extra-utils, texlive, texinfo
+Standards-Version: 3.7.2.0
+Vcs-Bzr: http://cl-debian.alioth.debian.org/repository/pvaneynd/bzr-moved/slime/
+
+Package: slime
+Section: devel
+Architecture: all
+Depends: emacsen-common, cl-swank (= ${source:Version})
+Recommends: info | info-browser
+Description: Superior LISP Interaction Mode for Emacs
+ SLIME is the Superior Lisp Interaction Mode for Emacs. 
+ . 
+ This is an ILISP-like development environment intended for maximum
+ integration with CMUCL (also works with SBCL, OpenMCL and work is
+ ongoing on Lispworks and current CVS version of CLISP and CLISP 2.32
+ on Linux).
+ .
+ This package contains the Emacs client, that will connect to the
+ Lisp-side server (see package cl-swank).
+ .
+ To connect to Common Lisp implementations not running in Debian
+ you need the latest CVS version of slime, NOT the old slime
+ 'release' version 1.2.1 or older.
+
+Package: cl-swank
+Section: devel
+Architecture: all
+Depends: ${misc:Depends}
+Suggests: slime
+Replaces: slime (<< 1:20050929-1)
+Conflicts: slime (<< 1:20050929-1)
+Description: Superior LISP Interaction Mode for Emacs (Lisp-side server)
+ SLIME is the Superior Lisp Interaction Mode for Emacs.
+ .
+ This is an ILISP-like development environment intended for maximum
+ integration with CMUCL (also works with SBCL, OpenMCL and work is
+ ongoing on Lispworks and current CVS version of CLISP and CLISP 2.32
+ on Linux).
+ .
+ This package contains the Lisp-side server, needed by the Emacs client
+ (see package slime).

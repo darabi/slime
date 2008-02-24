@@ -1,0 +1,97 @@
+#! /bin/sh -e
+# /usr/lib/emacsen-common/packages/install/slime
+
+# Written by Jim Van Zandt <jrv@vanzandt.mv.com>, borrowing heavily
+# from the install scripts for gettext by Santiago Vila
+# <sanvila@ctv.es> and octave by Dirk Eddelbuettel <edd@debian.org>.
+
+FLAVOR=$1
+PACKAGE=slime
+
+if [ ${FLAVOR} = emacs ]; then exit 0; fi
+
+echo install/${PACKAGE}: Handling install for emacsen flavor ${FLAVOR}
+
+#FLAVORTEST=`echo $FLAVOR | cut -c-6`
+#if [ ${FLAVORTEST} = xemacs ] ; then
+#    SITEFLAG="-no-site-file"
+#else
+#    SITEFLAG="--no-site-file"
+#fi
+FLAGS="${SITEFLAG} -q -batch -l path.el"
+
+ELDIR=/usr/share/emacs/site-lisp/${PACKAGE}
+ELCDIR=/usr/share/${FLAVOR}/site-lisp/${PACKAGE}
+
+# Install-info-altdir does not actually exist. 
+# Maybe somebody will write it.
+if test -x /usr/sbin/install-info-altdir; then
+    echo install/${PACKAGE}: install Info links for ${FLAVOR}
+    install-info-altdir --quiet --section "" "" --dirname=${FLAVOR} /usr/info/${PACKAGE}.info.gz
+fi
+
+# in case of a failed installation .el symlinks are left behind, remove them
+if [ -d "${ELCDIR}" ] ; then
+  if [ "${ELCDIR}" = "" ] ; then
+    echo ELCDIR is empty, emergency stop
+    exit 1
+  else
+    # we use find to protect against 'bad' filenames
+    find "${ELCDIR}" -maxdepth 1 -name "*.el" -print0 | \
+      xargs -0 rm || true
+    rm "${ELCDIR}/ChangeLog" || true
+  fi
+fi
+
+if [ -d "${ELCDIR}/contrib" ] ; then
+  if [ "${ELCDIR}" = "" ] ; then
+    echo ELCDIR is empty, emergency stop
+    exit 1
+  else
+    # we use find to protect against 'bad' filenames
+    find "${ELCDIR}/contrib" -maxdepth 1 -name "*.el" -print0 | \
+      xargs -0 rm || true
+  fi
+fi
+
+install -m 755 -d ${ELCDIR}
+install -m 755 -d ${ELCDIR}/contrib
+cd ${ELDIR}
+FILES=`echo *.el`
+cp ${FILES} ${ELCDIR}
+
+cd ${ELDIR}/contrib
+CFILES=`echo *.el`
+cp ${CFILES} ${ELCDIR}/contrib/
+
+cd ${ELCDIR}
+
+cat << EOF > path.el
+(setq load-path (cons "." load-path) byte-compile-warnings nil)
+EOF
+${FLAVOR} ${FLAGS} `for i in ${FILES} ; do echo -l ${ELCDIR}/$i ; done` \
+                   `for i in ${CFILES} ; do echo -l ${ELCDIR}/contrib/$i ; done` \
+		    -f batch-byte-compile \
+		    ${FILES} `for i in ${CFILES} ; do echo contrib/$i ; done` 
+rm -f *.el path.el
+
+## while in ${ELCDIR}
+
+## symlink the source files into the ${ELCDIR}
+## so that `find-library' will find them
+cd ${ELCDIR}
+for FILE in $FILES ; do 
+  if ! [ -e $FILE ];  then
+  ## note that these will not be 'relative' symlinks.
+    ln -s ${ELDIR}/$FILE .
+  fi
+done
+
+cd ${ELCDIR}/contrib
+for FILE in $CFILES ; do 
+  if ! [ -e $FILE ];  then
+  ## note that these will not be 'relative' symlinks.
+    ln -s ${ELDIR}/contrib/$FILE .
+  fi
+done
+exit 0
