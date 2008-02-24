@@ -1,5 +1,9 @@
 slime (1:20080223-1) unstable; urgency=low
 
+  * Changed to group maintanance
+  * Corrected Vcs-Git control field
+  * Updated standard version without real changes
+  * Added homepage field
   * New upstream release
 
  -- Peter Van Eynde <pvaneynd@debian.org>  Sun, 24 Feb 2008 16:30:38 +0100
