@@ -1,3 +1,9 @@
+slime (1:20080223-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Peter Van Eynde <pvaneynd@debian.org>  Sun, 24 Feb 2008 16:30:38 +0100
+
 slime (1:20071202-1) unstable; urgency=low
 
   * New upstream version.
