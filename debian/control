@@ -5,7 +5,7 @@ Maintainer: Debian Common Lisp Team <pkg-common-lisp-devel@lists.alioth.debian.o
 Uploaders: Peter Van Eynde <pvaneynd@debian.org>
 Build-Depends: debhelper (>= 4.0.0)
 Build-Depends-Indep: dh-lisp, texlive-generic-recommended, texlive-extra-utils, texlive, texinfo
-Standards-Version: 3.7.2.0
+Standards-Version: 3.7.3
 Vcs-Git: http://git.debian.org/git/pkg-common-lisp/slime.git
 
 Package: slime
