@@ -123,7 +123,7 @@ Return nil if nothing appropriate is available."
   (let ((cfp (compile-file-pathname src-pathname)))
     (merge-pathnames (make-pathname 
                       :directory
-                      `(:relative "swank" "fasl" ,(unique-directory-name))
+                      `(:relative "swank" "fasl" ,(unique-dir-name))
                       :name (pathname-name cfp)
                       :type (pathname-type cfp))
                      (clc:calculate-fasl-root))))
