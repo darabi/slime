@@ -15,8 +15,8 @@ Architecture: all
 Depends: emacsen-common
 Recommends: cl-swank (= ${source:Version}), info | info-browser
 Description: Superior LISP Interaction Mode for Emacs
- SLIME is the Superior Lisp Interaction Mode for Emacs. 
- . 
+ SLIME is the Superior Lisp Interaction Mode for Emacs.
+ .
  This is an ILISP-like development environment intended for maximum
  integration with CMUCL (also works with SBCL, OpenMCL and work is
  ongoing on Lispworks and current CVS version of CLISP and CLISP 2.32
