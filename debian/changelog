@@ -1,6 +1,7 @@
 slime (1:20080223-3) UNRELEASED; urgency=low
 
   * debian/control:
+    + add Vcs-Browser field.
     + recommend, not depend on, cl-swank, thanks to Trent W. Buck
       <trentbuck@gmail.com> (Closes: #471863).
     + remove trailing spaces from the long Description:.

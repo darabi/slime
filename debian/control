@@ -8,6 +8,7 @@ Build-Depends-Indep: dh-lisp, texlive-generic-recommended, texlive-extra-utils, 
 Standards-Version: 3.7.3
 Homepage: http://common-lisp.net/project/slime/
 Vcs-Git: http://git.debian.org/git/pkg-common-lisp/slime.git
+Vcs-Browser: http://git.debian.org/?p=pkg-common-lisp/slime.git;a=summary
 
 Package: slime
 Section: devel
