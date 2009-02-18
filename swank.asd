@@ -26,18 +26,14 @@
 
 (defclass swank-loader-file (asdf:cl-source-file) ())
 
-;;;; make compile-op a nop
-
-(defmethod asdf:operation-done-p ((o asdf:compile-op) (f swank-loader-file))
-  t)
-
 ;;;; after loading run init
 
 (defmethod asdf:perform ((o asdf:load-op) (f swank-loader-file))
   (load (asdf::component-pathname f))
   (funcall (read-from-string "swank-loader::init")
            :reload (asdf::operation-forced o)
-           :delete (asdf::operation-forced o)))
+           :delete (asdf::operation-forced o)
+	   :setup nil))
 
 (asdf:defsystem :swank
   :default-component-class swank-loader-file

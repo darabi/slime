@@ -26,53 +26,6 @@ one sexp to find out the context."
 	     (slime-make-form-spec-from-string 
 	      (concat (slime-incomplete-sexp-at-point) ")"))))))))
 
-;; XXX: unused function
-(defun slime-cl-symbol-external-ref-p (symbol)
-  "Does SYMBOL refer to an external symbol?
-FOO:BAR is an external reference.
-FOO::BAR is not, and nor is BAR."
-  (let ((name (if (stringp symbol) symbol (symbol-name symbol))))
-    (and (string-match ":" name)
-         (not (string-match "::" name)))))
-
-(defun slime-cl-symbol-name (symbol)
-  (let ((n (if (stringp symbol) symbol (symbol-name symbol))))
-    (if (string-match ":\\([^:]*\\)$" n)
-	(let ((symbol-part (match-string 1 n)))
-          (if (string-match "^|\\(.*\\)|$" symbol-part)
-              (match-string 1 symbol-part)
-              symbol-part))
-      n)))
-
-(defun slime-cl-symbol-package (symbol &optional default)
-  (let ((n (if (stringp symbol) symbol (symbol-name symbol))))
-    (if (string-match "^\\([^:]*\\):" n)
-	(match-string 1 n)
-      default)))
-
-;; XXX: unused function
-(defun slime-qualify-cl-symbol (symbol-or-name)
-  "Like `slime-qualify-cl-symbol-name', but interns the result."
-  (intern (slime-qualify-cl-symbol-name symbol-or-name)))
-
-(defun slime-qualify-cl-symbol-name (symbol-or-name)
-  "Return a package-qualified symbol-name that indicates the CL symbol
-SYMBOL. If SYMBOL doesn't already have a package prefix the current
-package is used."
-  (let ((s (if (stringp symbol-or-name)
-               symbol-or-name
-             (symbol-name symbol-or-name))))
-    (if (slime-cl-symbol-package s)
-        s
-      (format "%s::%s"
-              (let* ((package (slime-current-package)))
-                ;; package is a string like ":cl-user" or "CL-USER".
-                (if (and package (string-match "^:" package))
-                    (substring package 1)
-                  package))
-              (slime-cl-symbol-name s)))))
-
-
 (defun slime-parse-sexp-at-point (&optional n skip-blanks-p)
   "Return the sexp at point as a string, otherwise nil.
 If N is given and greater than 1, a list of all such sexps
@@ -110,6 +63,17 @@ If SKIP-BLANKS-P is true, leading whitespaces &c are skipped.
               (first result)
               (nreverse result)))))))
 
+(defun slime-has-symbol-syntax-p (string)
+  (if (and string (not (zerop (length string))))
+      (member (char-syntax (aref string 0)) 
+	      '(?w ?_ ?\' ?\\))))
+
+(defun slime-parse-symbol-name-at-point (&optional n skip-blanks-p)
+  (let ((symbols (slime-parse-sexp-at-point n skip-blanks-p)))
+    (if (every #'slime-has-symbol-syntax-p (slime-ensure-list symbols))
+	symbols
+	nil)))
+
 (defun slime-incomplete-sexp-at-point (&optional n)
   (interactive "p") (or n (setq n 1))
   (buffer-substring-no-properties (save-excursion (backward-up-list n) (point))
@@ -139,7 +103,9 @@ parsing, and are then returned back as multiple values."
           (slime-forward-blanks))
         (when parser
           (multiple-value-setq (forms indices points)
-            (funcall parser op-name user-point forms indices points))))))
+            ;; We pass the fully qualified name (`current-op'), so it's the
+            ;; fully qualified name that will be sent to SWANK.
+            (funcall parser current-op user-point forms indices points))))))
   (values forms indices points))
 
 
@@ -152,6 +118,7 @@ parsing, and are then returned back as multiple values."
     ("CERROR"         . (slime-make-extended-operator-parser/look-ahead 2))
     ("CHANGE-CLASS"   . (slime-make-extended-operator-parser/look-ahead 2))
     ("DEFMETHOD"      . (slime-make-extended-operator-parser/look-ahead 1))
+    ("DEFINE-COMPILER-MACRO" . (slime-make-extended-operator-parser/look-ahead 1))
     ("APPLY"          . (slime-make-extended-operator-parser/look-ahead 1))
     ("DECLARE"        . slime-parse-extended-operator/declare)
     ("DECLAIM"        . slime-parse-extended-operator/declare)
@@ -159,16 +126,21 @@ parsing, and are then returned back as multiple values."
 
 (defun slime-make-extended-operator-parser/look-ahead (steps)
   "Returns a parser that parses the current operator at point
-plus STEPS-many additional sexps on the right side of the
-operator."
+plus (at most) STEPS-many additional sexps on the right side of
+the operator."
   (lexical-let ((n steps))
     #'(lambda (name user-point current-forms current-indices current-points)
-        (let ((old-forms (rest current-forms)))
-          (let* ((args (slime-ensure-list (slime-parse-sexp-at-point n)))
-                 (arg-specs (mapcar #'slime-make-form-spec-from-string args)))
-            (setq current-forms (cons `(,name ,@arg-specs) old-forms))))
-        (values current-forms current-indices current-points)
-        )))
+        (let ((old-forms (rest current-forms))
+              (arg-idx   (first current-indices)))
+          (when (and (not (zerop arg-idx)) ; point is at CAR of form?
+                     (not (= (point)       ; point is at end of form?
+                             (save-excursion (slime-end-of-list)
+                                             (point)))))
+            (let* ((args (slime-ensure-list (slime-parse-sexp-at-point n)))
+                   (arg-specs (mapcar #'slime-make-form-spec-from-string args)))
+              (setq current-forms (cons `(,name ,@arg-specs) old-forms))))
+          (values current-forms current-indices current-points)
+          ))))
 
 (defun slime-parse-extended-operator/declare
     (name user-point current-forms current-indices current-points)
@@ -338,16 +310,17 @@ Examples:
               (when (member (char-syntax (char-after)) '(?\( ?')) 
                 (incf level)
                 (forward-char 1)
-                (let ((name (slime-symbol-name-at-point)))
+                (let ((name (slime-parse-symbol-name-at-point 1 nil)))
                   (cond
                     (name
                      (save-restriction
                        (widen) ; to allow looking-ahead/back in extended parsing.
                        (multiple-value-bind (new-result new-indices new-points)
-                           (slime-parse-extended-operator-name initial-point
-                                                               (cons `(,name) result) ; minimal form spec
-                                                               (cons arg-index arg-indices)
-                                                               (cons (point) points))
+                           (slime-parse-extended-operator-name 
+			    initial-point
+			    (cons `(,name) result) ; minimal form spec
+			    (cons arg-index arg-indices)
+			    (cons (point) points))
                          (setq result new-result)
                          (setq arg-indices new-indices)
                          (setq points new-points))))
@@ -377,6 +350,25 @@ Examples:
     (if string-start-pos
 	(goto-char string-start-pos)
 	(error "We're not within a string"))))
+
+(def-slime-test enclosing-form-specs.1
+    (buffer-sexpr wished-form-specs)
+    ""
+    '(("(defmethod *HERE*)" (("defmethod")))
+      ("(cerror foo *HERE*)" (("cerror" "foo"))))
+  (slime-check-top-level)
+  (with-temp-buffer
+    (let ((tmpbuf (current-buffer)))
+      (lisp-mode)
+      (insert buffer-sexpr)
+      (search-backward "*HERE*")
+      (delete-region (match-beginning 0) (match-end 0))
+      (multiple-value-bind (specs) 
+	  (slime-enclosing-form-specs)
+	(slime-check "Check enclosing form specs"
+	  (equal specs wished-form-specs)))
+      )))
+
 
 (provide 'slime-parse)
 

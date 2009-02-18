@@ -124,9 +124,6 @@
     (:class
      (describe (find-class symbol)))))
 
-(defimplementation make-stream-interactive (stream)
-  (setf (interactive-stream-p stream) t))
-
 ;;;; Debugger
 
 (defvar *sldb-topframe*)
@@ -166,8 +163,7 @@
   (let ((end (or end most-positive-fixnum)))
     (loop for f = (nth-frame start) then (next-frame f)
 	  for i from start below end
-	  while f
-	  collect f)))
+	  while f collect f)))
 
 (defimplementation print-frame (frame stream)
   (debugger:output-frame stream frame :moderate))
@@ -182,10 +178,6 @@
 (defimplementation frame-var-value (frame var)
   (let ((frame (nth-frame frame)))
     (debugger:frame-var-value frame var)))
-        
-(defimplementation frame-catch-tags (index)
-  (declare (ignore index))
-  nil)
 
 (defimplementation disassemble-frame (index)
   (disassemble (debugger:frame-function (nth-frame index))))
@@ -213,6 +205,13 @@
       frame (debugger:eval-form-in-context 
              form 
              (debugger:environment-of-frame frame)))))
+
+(defimplementation frame-restartable-p (frame)
+  (handler-case (debugger:frame-retryable-p frame)
+    (serious-condition (c)
+      (funcall (read-from-string "swank::background-message")
+               "~a ~a" frame (princ-to-string c))
+      nil)))
 
 (defimplementation restart-frame (frame-number)
   (let ((frame (nth-frame frame-number)))
@@ -259,7 +258,7 @@
     (cond (*buffer-name*
            (make-location 
             (list :buffer *buffer-name*)
-            (list :position *buffer-start-position*)))
+            (list :offset *buffer-start-position* 0)))
           (loc
            (destructuring-bind (file . pos) loc
              (make-location
@@ -286,11 +285,14 @@
                  )
     (funcall function)))
 
-(defimplementation swank-compile-file (filename load-p external-format)
+(defimplementation swank-compile-file (input-file output-file 
+                                       load-p external-format)
   (with-compilation-hooks ()
     (let ((*buffer-name* nil)
-          (*compile-filename* filename))
-      (compile-file *compile-filename* :load-after-compile load-p
+          (*compile-filename* input-file))
+      (compile-file *compile-filename* 
+                    :output-file output-file
+                    :load-after-compile load-p
                     :external-format external-format))))
 
 (defun call-with-temp-file (fn)
@@ -305,16 +307,20 @@
    (lambda (stream filename)
        (write-string string stream)
        (finish-output stream)
-       (let ((binary-filename
-              (excl:without-redefinition-warnings
-                ;; Suppress Allegro's redefinition warnings; they are
-                ;; pointless when we are compiling via a temporary
-                ;; file.
-                (compile-file filename :load-after-compile t))))
+       (multiple-value-bind (binary-filename warnings? failure?)
+         (excl:without-redefinition-warnings
+             ;; Suppress Allegro's redefinition warnings; they are
+             ;; pointless when we are compiling via a temporary
+             ;; file.
+             (compile-file filename :load-after-compile t))
+         (declare (ignore warnings?))
          (when binary-filename
-           (delete-file binary-filename))))))
+           (delete-file binary-filename))
+         (not failure?)))))
 
-(defimplementation swank-compile-string (string &key buffer position directory)
+(defimplementation swank-compile-string (string &key buffer position filename
+                                         policy)
+  (declare (ignore policy))
   ;; We store the source buffer in excl::*source-pathname* as a string
   ;; of the form <buffername>;<start-offset>.  Quite ugly encoding, but
   ;; the fasl file is corrupted if we use some other datatype.
@@ -323,14 +329,15 @@
           (*buffer-start-position* position)
           (*buffer-string* string)
           (*default-pathname-defaults*
-           (if directory (merge-pathnames (pathname directory))
+           (if filename 
+               (merge-pathnames (pathname filename))
                *default-pathname-defaults*)))
       (compile-from-temp-file
        (format nil "~S ~S~%~A" 
                `(in-package ,(package-name *package*))
                `(eval-when (:compile-toplevel :load-toplevel)
-                 (setq excl::*source-pathname*
-                  ',(format nil "~A;~D" buffer position)))
+                  (setq excl::*source-pathname*
+                        ',(format nil "~A;~D" buffer position)))
                string)))))
 
 ;;;; Definition Finding
@@ -368,7 +375,7 @@
          (start (and part
                      (scm::source-part-start part)))
          (pos (if start
-                  (list :position (1+ (- start (count-cr file start))))
+                  (list :position (1+ start))
                   (list :function-name (string (fspec-primary-name fspec))))))
     (make-location (list :file (namestring (truename file)))
                    pos)))
@@ -377,7 +384,7 @@
   (let ((pos (position #\; filename :from-end t)))
     (make-location
      (list :buffer (subseq filename 0 pos))
-     (list :position (parse-integer (subseq filename (1+ pos)))))))
+     (list :offset (parse-integer (subseq filename (1+ pos))) 0))))
 
 (defun find-fspec-location (fspec type file top-level)
   (etypecase file
@@ -403,15 +410,25 @@
    ((and (listp fspec)
          (eql (car fspec) :top-level-form))
     (destructuring-bind (top-level-form file &optional position) fspec 
+      (declare (ignore top-level-form))
       (list
        (list (list nil fspec)
-             (make-location (list :buffer file)
-                            (list :position position t))))))
+             (make-location (list :buffer file) ; FIXME: should use :file
+                            (list :position position)
+                            (list :align t))))))
    ((and (listp fspec) (eq (car fspec) :internal))
     (destructuring-bind (_internal next _n) fspec
+      (declare (ignore _internal _n))
       (fspec-definition-locations next)))
    (t
     (let ((defs (excl::find-source-file fspec)))
+      (when (and (null defs)
+                 (listp fspec)
+                 (string= (car fspec) '#:method))
+        ;; If methods are defined in a defgeneric form, the source location is
+        ;; recorded for the gf but not for the methods. Therefore fall back to
+        ;; the gf as the likely place of definition.
+        (setq defs (excl::find-source-file (second fspec))))
       (if (null defs)
           (list
            (list (list nil fspec)
@@ -564,16 +581,9 @@
 
 ;;;; Inspecting
 
-(defmethod emacs-inspect ((f function))
-          (append
-           (label-value-line "Name" (function-name f))
-           `("Formals" ,(princ-to-string (arglist f)) (:newline))
-           (let ((doc (documentation (excl::external-fn_symdef f) 'function)))
-             (when doc
-               `("Documentation:" (:newline) ,doc)))))
-
+(excl:without-redefinition-warnings
 (defmethod emacs-inspect ((o t))
-  (allegro-inspect o))
+  (allegro-inspect o)))
 
 (defmethod emacs-inspect ((o function))
   (allegro-inspect o))
@@ -593,7 +603,7 @@
                        :unsigned-long :unsigned-half-long 
                        :unsigned-3byte)
        (label-value-line name (inspect::component-ref-v object access type)))
-      ((:lisp :value)
+      ((:lisp :value :func)
        (label-value-line name (inspect::component-ref object access)))
       (:indirect 
        (destructuring-bind (prefix count ref set) access
@@ -652,8 +662,9 @@
 (defvar *mailbox-lock* (mp:make-process-lock :name "mailbox lock"))
 
 (defstruct (mailbox (:conc-name mailbox.)) 
-  (mutex (mp:make-process-lock :name "process mailbox"))
-  (queue '() :type list))
+  (lock (mp:make-process-lock :name "process mailbox"))
+  (queue '() :type list)
+  (gate (mp:make-gate nil)))
 
 (defun mailbox (thread)
   "Return THREAD's mailbox."
@@ -663,23 +674,31 @@
               (make-mailbox)))))
 
 (defimplementation send (thread message)
-  (let* ((mbox (mailbox thread))
-         (mutex (mailbox.mutex mbox)))
-    (mp:process-wait-with-timeout 
-     "yielding before sending" 0.1
-     (lambda ()
-       (mp:with-process-lock (mutex)
-         (< (length (mailbox.queue mbox)) 10))))
-    (mp:with-process-lock (mutex)
-      (setf (mailbox.queue mbox)
-            (nconc (mailbox.queue mbox) (list message))))))
+  (let* ((mbox (mailbox thread)))
+    (mp:with-process-lock ((mailbox.lock mbox))
+      (setf (mailbox.queue mbox) 
+            (nconc (mailbox.queue mbox) (list message)))
+      (mp:open-gate (mailbox.gate mbox)))))
 
-(defimplementation receive ()
-  (let* ((mbox (mailbox mp:*current-process*))
-         (mutex (mailbox.mutex mbox)))
-    (mp:process-wait "receive" #'mailbox.queue mbox)
-    (mp:with-process-lock (mutex)
-      (pop (mailbox.queue mbox)))))
+(defimplementation receive-if (test &optional timeout)
+  (let ((mbox (mailbox mp:*current-process*)))
+    (assert (or (not timeout) (eq timeout t)))
+    (loop
+     (check-slime-interrupts)
+     (mp:with-process-lock ((mailbox.lock mbox))
+       (let* ((q (mailbox.queue mbox))
+              (tail (member-if test q)))
+         (when tail
+           (setf (mailbox.queue mbox) (nconc (ldiff q tail) (cdr tail)))
+           (return (car tail)))
+         (mp:close-gate (mailbox.gate mbox))))
+     (when (eq timeout t) (return (values nil t)))
+     (mp:process-wait-with-timeout "receive-if" 0.5
+                                   #'mp:gate-open-p (mailbox.gate mbox)))))
+
+(defimplementation set-default-initial-binding (var form)
+  (setq excl:*cl-default-special-bindings*
+        (acons var form excl:*cl-default-special-bindings*)))
 
 (defimplementation quit-lisp ()
   (excl:exit 0 :quiet t))

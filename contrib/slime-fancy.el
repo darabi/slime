@@ -17,6 +17,9 @@
 ;;   * Adding new commands, keybindings, menu items
 ;;   * Making things clickable that would otherwise be just plain text
 
+(require 'slime-repl)
+(slime-repl-init)
+
 ;; Better arglist display, can be turned off by customization.
 (require 'slime-autodoc)
 (slime-autodoc-init)
@@ -69,5 +72,18 @@
 ;; Puts clickable references to documentation into SBCL errors.
 (require 'slime-references)
 (slime-references-init)
+
+;; Makes M-. work on local definitions, too.
+(require 'slime-mdot-fu)
+(slime-mdot-fu-init)
+
+;; Add/Remove a symbol at point from the relevant DEFPACKAGE form
+;; via C-c x.
+(require 'slime-package-fu)
+(slime-package-fu-init)
+
+;; Fontify with-foo and do-foo like standard macros.
+(require 'slime-fontifying-fu)
+(slime-fontifying-fu-init)
 
 (provide 'slime-fancy)

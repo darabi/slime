@@ -87,15 +87,19 @@
 	  (t 
 	   (list label ": " '(:newline) "  " docstring '(:newline))))))
 
-(defmethod emacs-inspect ((f function))
-  (append 
-	   (label-value-line "Name" (function-name f))
-	   `("Its argument list is: " 
-	     ,(inspector-princ (arglist f)) (:newline))
-	   (docstring-ispec "Documentation" f t)
-	   (if (function-lambda-expression f)
-	       (label-value-line "Lambda Expression"
-				 (function-lambda-expression f)))))
+(unless (find-method #'emacs-inspect '() (list (find-class 'function)) nil)
+  (defmethod emacs-inspect ((f function))
+    (inspect-function f)))
+
+(defun inspect-function (f)
+  (append
+   (label-value-line "Name" (function-name f))
+   `("Its argument list is: " 
+     ,(inspector-princ (arglist f)) (:newline))
+   (docstring-ispec "Documentation" f t)
+   (if (function-lambda-expression f)
+       (label-value-line "Lambda Expression"
+			 (function-lambda-expression f)))))
 
 (defun method-specializers-for-inspect (method)
   "Return a \"pretty\" list of the method's specializers. Normal
@@ -171,7 +175,7 @@ See `methods-by-applicability'.")
                                 (abort "Abort setting slot ~S" slot-name)
                               (let ((value-string (eval-in-emacs
                                                    `(condition-case c
-                                                     (slime-read-object
+                                                     (slime-read-from-minibuffer
                                                       ,(format nil "Set slot ~S to (evaluated) : " slot-name))
                                                      (quit nil)))))
                                 (when (and value-string
@@ -184,7 +188,6 @@ See `methods-by-applicability'.")
 
 (defgeneric all-slots-for-inspector (object)
   (:method ((object standard-object))
-    (declare (ignore inspector))
     (append '("--------------------" (:newline)
               "All Slots:" (:newline))
             (let* ((class (class-of object))
@@ -338,7 +341,7 @@ See `methods-by-applicability'.")
 
 ;; Wrapper structure over the list of symbols of a package that should
 ;; be displayed with their respective classification flags. This is
-;; because we need a unique type to dispatch on in INSPECT-FOR-EMACS.
+;; because we need a unique type to dispatch on in EMACS-INSPECT.
 ;; Used by the Inspector for packages.
 (defstruct (%package-symbols-container (:conc-name   %container.)
                                        (:constructor %%make-package-symbols-container))
@@ -377,7 +380,7 @@ represents (cf. CLASSIFY-SYMBOL & Fuzzy Completion.)"
         ,(concatenate 'string        ; underlining dashes
                       (make-string (+ max-length distance -1) :initial-element #\-)
                       " "
-                      (let* ((dummy (classify-symbol (gensym)))
+                      (let* ((dummy (classify-symbol :foo))
                              (dummy (symbol-classification->string dummy))
                              (classification-length (length dummy)))
                         (make-string classification-length :initial-element #\-)))
@@ -398,21 +401,29 @@ the GENERIC-FUNCTION group.) As macros and special-operators are
 specified to be FBOUNDP, there is no general FBOUNDP group,
 instead there are the three explicit FUNCTION, MACRO and
 SPECIAL-OPERATOR groups."
-  (let ((table (make-hash-table :test #'eq)))
-    (flet ((maybe-convert-fboundps (classifications)
-             ;; Convert an :FBOUNDP in CLASSIFICATIONS to :FUNCTION if possible.
-             (if (and (member :fboundp classifications)
-                      (not (member :macro classifications))
-                      (not (member :special-operator classifications)))
-                 (substitute :function :fboundp classifications)
-                 (remove :fboundp classifications))))
+  (let ((table (make-hash-table :test #'eq))
+	(+default-classification+ :misc))
+    (flet ((normalize-classifications (classifications)
+             (cond ((null classifications) `(,+default-classification+))
+		   ;; Convert an :FBOUNDP in CLASSIFICATIONS to :FUNCTION if possible.
+		   ((and (member :fboundp classifications)
+			 (not (member :macro classifications))
+			 (not (member :special-operator classifications)))
+		      (substitute :function :fboundp classifications))
+		   (t (remove :fboundp classifications)))))
       (loop for symbol in symbols do
-            (loop for classification in (maybe-convert-fboundps (classify-symbol symbol))
+            (loop for classification in (normalize-classifications (classify-symbol symbol))
                   ;; SYMBOLS are supposed to be sorted alphabetically;
                   ;; this property is preserved here except for reversing.
                   do (push symbol (gethash classification table)))))
     (let* ((classifications (loop for k being each hash-key in table collect k))
-           (classifications (sort classifications #'string<)))
+           (classifications (sort classifications
+				  ;; Sort alphabetically, except +DEFAULT-CLASSIFICATION+
+				  ;; which sort to the end.
+				  #'(lambda (a b)
+				      (cond ((eql a +default-classification+) nil)
+					    ((eql b +default-classification+) t)
+					    (t (string< a b)))))))
       (loop for classification in classifications
             for symbols = (gethash classification table)
             appending`(,(symbol-name classification)
@@ -427,7 +438,7 @@ SPECIAL-OPERATOR groups."
 
 (defmethod emacs-inspect ((%container %package-symbols-container))
   (with-struct (%container. title description symbols grouping-kind) %container
-            `(,title (:newline) 
+            `(,title (:newline) (:newline)
 	      ,@description
               (:newline)
               "  " ,(ecase grouping-kind
@@ -448,18 +459,23 @@ SPECIAL-OPERATOR groups."
         (package-use-list     (package-use-list package))
         (package-used-by-list (package-used-by-list package))
         (shadowed-symbols     (package-shadowing-symbols package))
-        (present-symbols      '()) (present-symbols-length  0)
-        (internal-symbols     '()) (internal-symbols-length 0)
-        (external-symbols     '()) (external-symbols-length 0))
+        (present-symbols      '()) (present-symbols-length   0)
+        (internal-symbols     '()) (internal-symbols-length  0)
+        (inherited-symbols    '()) (inherited-symbols-length 0)
+        (external-symbols     '()) (external-symbols-length  0))
 
     (do-symbols* (sym package)
       (let ((status (symbol-status sym package)))
-        (when (not (eq status :inherited))
-          (push sym present-symbols) (incf present-symbols-length)
-          (if (eq status :internal)
-              (progn (push sym internal-symbols) (incf internal-symbols-length))                
-              (progn (push sym external-symbols) (incf external-symbols-length))))))
-    
+        (when (eq status :inherited)
+          (push sym inherited-symbols) (incf inherited-symbols-length)
+          (go :continue))
+        (push sym present-symbols) (incf present-symbols-length)
+        (cond ((eq status :internal)
+               (push sym internal-symbols) (incf internal-symbols-length))
+              (t
+               (push sym external-symbols) (incf external-symbols-length))))
+      :continue)
+
     (setf package-nicknames    (sort (copy-list package-nicknames)    #'string<)
           package-use-list     (sort (copy-list package-use-list)     #'string< :key #'package-name)
           package-used-by-list (sort (copy-list package-used-by-list) #'string< :key #'package-name)
@@ -467,7 +483,8 @@ SPECIAL-OPERATOR groups."
     
     (setf present-symbols      (sort present-symbols  #'string<)  ; SORT + STRING-LESSP
           internal-symbols     (sort internal-symbols #'string<)  ; conses on at least
-          external-symbols     (sort external-symbols #'string<)) ; SBCL 0.9.18.
+          external-symbols     (sort external-symbols #'string<)  ; SBCL 0.9.18.
+          inherited-symbols    (sort inherited-symbols #'string<))
 
     
      `(""                               ; dummy to preserve indentation.
@@ -528,6 +545,12 @@ SPECIAL-OPERATOR groups."
                              "which deliberately deviates from the CLHS glossary"     (:newline)
                              "entry of `internal' because it's assumed to be more"    (:newline)
                              "useful this way."                                       (:newline)))
+            (:newline)
+            ,(display-link "inherited" inherited-symbols  inherited-symbols-length
+                          :title (format nil "All inherited symbols of package \"~A\"" package-name)
+                          :description
+                          '("A symbol is considered inherited in a package if it" (:newline)
+                            "was made accessible via USE-PACKAGE."                (:newline)))
             (:newline)
             ,(display-link "shadowed" shadowed-symbols (length shadowed-symbols)
                            :title (format nil "All shadowed symbols of package \"~A\"" package-name)

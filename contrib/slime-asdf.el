@@ -17,6 +17,8 @@
 ;; NOTE: `system-name' is a predefined variable in Emacs.  Try to
 ;; avoid it as local variable name.
 
+(require 'slime-repl)
+(slime-require :swank-asdf)
 
 (defun slime-load-system (&optional system)
   "Compile and load an ASDF system.  
@@ -60,9 +62,9 @@ returns it if it's in `system-names'."
   (message "Performing ASDF %S%s on system %S"
            operation (if keyword-args (format " %S" keyword-args) "")
            system)
-  (slime-eval-async
+  (slime-repl-shortcut-eval-async
    `(swank:operate-on-system-for-emacs ,system ,operation ,@keyword-args)
-   (slime-make-compilation-finished-continuation (current-buffer))))
+   #'slime-compilation-finished))
 
 (defslime-repl-shortcut slime-repl-load/force-system ("force-load-system")
   (:handler (lambda ()
