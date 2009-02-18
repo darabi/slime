@@ -1,3 +1,18 @@
+slime (1:20090217-1) unstable; urgency=low
+
+  [ Luca Capello ]
+  * debian/control: recommend, not depend on, cl-swank (Closes: #471863)
+  * debian/control: remove trailing spaces from the long Description:
+  * debian/control: add Vcs-Browser field
+  * debian/control: add myself to Uploaders:
+
+  [ Peter Van Eynde ]
+  * Add README.building as a hint for recompiling slime
+  * add a recommends for emacs | emacs22. Closes: #493556
+  * new upstream release works with new sbcl, Closes: #515802
+
+ -- Peter Van Eynde <pvaneynd@debian.org>  Wed, 18 Feb 2009 22:23:43 +0100
+
 slime (1:20080223-2) unstable; urgency=low
 
   * Use unique-dir-name instead of unique-directory-name
