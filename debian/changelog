@@ -1,14 +1,3 @@
-slime (1:20080223-3) UNRELEASED; urgency=low
-
-  * debian/control:
-    + add myself to Uploaders:.
-    + add Vcs-Browser field.
-    + recommend, not depend on, cl-swank, thanks to Trent W. Buck
-      <trentbuck@gmail.com> (Closes: #471863).
-    + remove trailing spaces from the long Description:.
-
- --
-
 slime (1:20080223-2) unstable; urgency=low
 
   * Use unique-dir-name instead of unique-directory-name
