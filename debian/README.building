@@ -1,0 +1,13 @@
+to update from new upstream:
+
+git cvsimport -v -d :pserver:anonymous@common-lisp.net:/project/slime/cvsroot slime
+git checkout origin
+git tag upstream/<date>
+
+git checkout upstrem
+git pull . origin
+git reset --hard HEAD
+
+
+git checkout master
+git pull . upstream
