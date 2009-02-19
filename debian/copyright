@@ -18,7 +18,7 @@ Copyright:
 
 These files with a different license are:
 
-GPL:
+GPL-v2:
 
 	swank-clisp.lisp
 	;;;; Copyright (C) 2003, 2004 W. Jenkner, V. Sedach
