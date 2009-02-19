@@ -21,7 +21,7 @@ LISP_PKG=swank
 
 case "$1" in
     configure)
-	/usr/sbin/register-common-lisp-source ${LISP_PKG}
+	register-common-lisp-source ${LISP_PKG}
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

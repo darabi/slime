@@ -21,7 +21,7 @@ LISP_PKG=swank
 
 case "$1" in
     remove|upgrade|deconfigure)
-	/usr/sbin/unregister-common-lisp-source ${LISP_PKG}
+	unregister-common-lisp-source ${LISP_PKG}
        install-info --quiet --remove /usr/info/slime.info.gz
         ;;
     failed-upgrade)
