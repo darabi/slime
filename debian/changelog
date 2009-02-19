@@ -10,6 +10,11 @@ slime (1:20090217-1) unstable; urgency=low
   * Add README.building as a hint for recompiling slime
   * add a recommends for emacs | emacs22. Closes: #493556
   * new upstream release works with new sbcl, Closes: #515802
+  * we do not need the full paths in preinst and postrm
+  * noted that we're still talking GPL v2 here
+  * remove duplicate Section entries
+  * updated standard version without any real changes
+  * added ${misc:Depends} to slime
 
  -- Peter Van Eynde <pvaneynd@debian.org>  Wed, 18 Feb 2009 22:23:43 +0100
 
