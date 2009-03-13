@@ -1,10 +1,10 @@
-slime (1:20090217-2) UNRELEASED; urgency=low
+slime (1:20090217-2) unstable; urgency=low
 
   * debian/postinst,prerm:
     - remove, since dh-lisp takes care of every Common Lisp-related
       stuff and the slime package does not need them (Closes: #518021).
 
- --
+ -- Luca Capello <luca@pca.it>  Fri, 13 Mar 2009 01:32:14 +0100
 
 slime (1:20090217-1) unstable; urgency=low
 
