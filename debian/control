@@ -14,6 +14,7 @@ Package: slime
 Architecture: all
 Depends: emacsen-common, ${misc:Depends}
 Recommends: cl-swank (= ${source:Version}), info | info-browser, emacs | emacs22
+Conflicts: emacs21, xemacs
 Description: Superior LISP Interaction Mode for Emacs
  SLIME is the Superior Lisp Interaction Mode for Emacs.
  .
