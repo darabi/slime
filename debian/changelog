@@ -1,3 +1,14 @@
+slime (1:20090409-1) UNRELEASED; urgency=low
+
+  * New upstream version. 
+    Code rewrite that (Closes: #410856)
+  * Removed xref.lisp again and added a test in the makefile for it
+    (Closes: #517205)
+  * Fixed typo in swank-loader.lisp that creates spurious warnings.
+    (Closes: #477265)
+
+ -- Peter Van Eynde <pvaneynd@debian.org>  Tue, 14 Apr 2009 11:34:40 +0200
+
 slime (1:20090217-2) unstable; urgency=low
 
   * debian/postinst,prerm:
