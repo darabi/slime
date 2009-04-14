@@ -1,10 +1,11 @@
 slime (1:20090409-1) UNRELEASED; urgency=low
 
-  * New upstream version
+  * New upstream version. 
+    Code rewrite that (Closes: #410856)
   * Removed xref.lisp again and added a test in the makefile for it
     (Closes: #517205)
 
- -- Peter Van Eynde <pvaneynd@debian.org>  Tue, 14 Apr 2009 11:17:28 +0200
+ -- Peter Van Eynde <pvaneynd@debian.org>  Tue, 14 Apr 2009 11:32:27 +0200
 
 slime (1:20090217-1) unstable; urgency=low
 
