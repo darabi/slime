@@ -10,8 +10,9 @@ slime (1:20090409-1) UNRELEASED; urgency=low
   * add a conflict for emacs21. xemacs. Limiting compatiblity to
     emacs22 will already be a challenge.
     (Closes: #517839, #478355)
+  * Move to debhelper v7 
 
- -- Peter Van Eynde <pvaneynd@debian.org>  Tue, 14 Apr 2009 22:05:51 +0200
+ -- Peter Van Eynde <pvaneynd@debian.org>  Tue, 14 Apr 2009 22:26:11 +0200
 
 slime (1:20090217-2) unstable; urgency=low
 
