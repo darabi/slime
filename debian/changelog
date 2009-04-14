@@ -11,8 +11,9 @@ slime (1:20090409-1) UNRELEASED; urgency=low
     emacs22 will already be a challenge.
     (Closes: #517839, #478355)
   * Move to debhelper v7 
+  * updated standard version without any real changes 
 
- -- Peter Van Eynde <pvaneynd@debian.org>  Tue, 14 Apr 2009 22:26:11 +0200
+ -- Peter Van Eynde <pvaneynd@debian.org>  Tue, 14 Apr 2009 22:26:54 +0200
 
 slime (1:20090217-2) unstable; urgency=low
 
