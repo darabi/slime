@@ -1,4 +1,4 @@
-slime (1:20090409-1) UNRELEASED; urgency=low
+slime (1:20090409-1) unstable; urgency=low
 
   * New upstream version. 
     Code rewrite that (Closes: #410856)
