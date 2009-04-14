@@ -40,7 +40,7 @@
   #+openmcl '(metering swank-openmcl swank-gray)
   #+lispworks '(swank-lispworks swank-gray)
   #+allegro '(swank-allegro swank-gray)
-  #+clisp '(xref metering swank-clisp swank-gray)
+  #+clisp '(#+() xref metering swank-clisp swank-gray)
   #+armedbear '(swank-abcl)
   #+cormanlisp '(swank-corman swank-gray)
   #+ecl '(swank-source-path-parser swank-source-file-cache swank-ecl swank-gray))
