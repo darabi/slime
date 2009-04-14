@@ -116,7 +116,7 @@ Return nil if nothing appropriate is available."
 
 (defun binary-pathname (src-pathname binary-dir)
   "Return the pathname where SRC-PATHNAME's binary should be compiled."
-  (declare (ignore binary-directory))
+  (declare (ignore binary-dir))
   (let ((cfp (compile-file-pathname src-pathname)))
     (merge-pathnames (make-pathname 
                       :directory
