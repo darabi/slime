@@ -1,3 +1,9 @@
+slime (1:20090409-2) unstable; urgency=low
+
+  * New upstream. Removed xref.lisp (Closes: #527524) 
+
+ -- Peter Van Eynde <pvaneynd@debian.org>  Mon, 01 Jun 2009 11:33:20 +0200
+
 slime (1:20090409-1) unstable; urgency=low
 
   * New upstream version. 
