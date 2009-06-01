@@ -1,6 +1,9 @@
 slime (1:20090409-2) unstable; urgency=low
 
   * New upstream. Removed xref.lisp (Closes: #527524) 
+  [ Torsten Landschoff ]
+  * slime.el: Populate slime-lisp-implementations from known common
+    lisp implementations on PATH (closes: #491602).
 
  -- Peter Van Eynde <pvaneynd@debian.org>  Mon, 01 Jun 2009 11:33:20 +0200
 

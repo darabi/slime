@@ -123,6 +123,15 @@ Return nil if the ChangeLog file cannot be found."
 (setq slime-protocol-version
       (eval-when-compile (slime-changelog-date)))
 
+(defun slime-gather-lisp-implementations ()
+  "Compute sane default value for slime-lisp-implementations."
+  (let ((known-lisps '("sbcl" "clisp" "ecl" "cmucl")))
+    (remove-if
+     'null
+     (mapcar 
+      (lambda (l) (if (executable-find l) (list l (list l))))
+      known-lisps))))
+
 
 ;;;; Customize groups
 ;;
@@ -1116,7 +1125,7 @@ last activated the buffer."
 (defvar inferior-lisp-program "lisp" 
   "*Program name for invoking an inferior Lisp with for Inferior Lisp mode.")
 
-(defvar slime-lisp-implementations nil
+(defvar slime-lisp-implementations (slime-gather-lisp-implementations)
   "*A list of known Lisp implementations.
 The list should have the form: 
   ((NAME (PROGRAM PROGRAM-ARGS...) &key INIT CODING-SYSTEM ENV) ...)
