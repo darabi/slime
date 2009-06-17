@@ -7,11 +7,6 @@ slime (1:20090616-1) unstable; urgency=low
   [ Peter Van Eynde ]
   * New upstream. Removed xref.lisp (Closes: #527524) 
   * fixed building instructions
-
- -- Peter Van Eynde <pvaneynd@debian.org>  Wed, 17 Jun 2009 22:31:10 +0200
-
-slime (1:20090409-1) unstable; urgency=low
-
   * New upstream version. 
     Code rewrite that (Closes: #410856)
     Also fixes the swank-in-swank problem (Closes: #457648)
@@ -25,7 +20,7 @@ slime (1:20090409-1) unstable; urgency=low
   * Move to debhelper v7 
   * updated standard version without any real changes 
 
- -- Peter Van Eynde <pvaneynd@debian.org>  Tue, 14 Apr 2009 22:26:54 +0200
+ -- Peter Van Eynde <pvaneynd@debian.org>  Wed, 17 Jun 2009 22:31:10 +0200
 
 slime (1:20090217-2) unstable; urgency=low
 
