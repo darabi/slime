@@ -98,7 +98,15 @@ uninstall-info:
 
 clean:
 	rm -f contributors.texi
+<<<<<<< HEAD:doc/Makefile
 	rm -f slime.{aux,cp,cps,fn,fns,ky,kys,log,pg,tmp,toc,tp,vr,vrs}
 	rm -f slime.{info,pdf,dvi,ps,html,kys,fns,vrs}
 	rm -f slime-refcard.{aux,log,pdf}
 	rm -rf html{,.tgz}
+=======
+	rm -f slime.aux slime.cp slime.cps slime.fn slime.fns slime.ky
+	rm -f slime.kys slime.log slime.pg slime.tmp slime.toc slime.tp
+	rm -f slime.vr slime.vrs
+	rm -f slime.info slime.pdf slime.dvi slime.ps slime.html
+	rm -rf html html.tgz
+>>>>>>> 67a230ce52977e88bd69c9805198bce44e235e07:doc/Makefile

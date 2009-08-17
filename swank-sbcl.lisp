@@ -1,4 +1,4 @@
-;;;; -*- Mode: lisp; indent-tabs-mode: nil -*-
+;;;;; -*- Mode: lisp; indent-tabs-mode: nil -*-
 ;;;
 ;;; swank-sbcl.lisp --- SLIME backend for SBCL.
 ;;;
@@ -139,12 +139,18 @@
     (sb-sys:invalidate-descriptor fd))
   (close socket))
 
-(defimplementation add-fd-handler (socket fn)
-  (declare (type function fn))
-  (let ((fd (socket-fd socket)))
-    (sb-sys:add-fd-handler fd :input (lambda (_)
-                                       _
-                                       (funcall fn)))))
+(defimplementation add-fd-handler (socket fun)
+  (let ((fd (socket-fd socket))
+        (handler nil))
+    (labels ((add ()
+               (setq handler (sb-sys:add-fd-handler fd :input #'run)))
+             (run (fd)
+               (sb-sys:remove-fd-handler handler) ; prevent recursion
+               (unwind-protect 
+                    (funcall fun)
+                 (when (sb-unix:unix-fstat fd) ; still open?
+                   (add)))))
+      (add))))
 
 (defimplementation remove-fd-handlers (socket)
   (sb-sys:invalidate-descriptor (socket-fd socket)))
@@ -401,6 +407,7 @@
       (sb-introspect:deftype-lambda-list typespec-operator)
     (if foundp arglist (call-next-method))))
 
+
 (defvar *buffer-name* nil)
 (defvar *buffer-offset*)
 (defvar *buffer-substring* nil)
@@ -429,13 +436,16 @@ information."
            :severity (etypecase condition
                        (sb-c:compiler-error  :error)
                        (sb-ext:compiler-note :note)
+                       #+#.(swank-backend::with-symbol redefinition-warning sb-kernel)
+                       (sb-kernel:redefinition-warning
+                                             :redefinition)
                        (style-warning        :style-warning)
                        (warning              :warning)
                        (reader-error         :read-error)
                        (error                :error))
-           :short-message (brief-compiler-message-for-emacs condition)
            :references (condition-references (real-condition condition))
-           :message (long-compiler-message-for-emacs condition context)
+           :message (brief-compiler-message-for-emacs condition)
+           :source-context (compiler-error-context context)
            :location (compiler-note-location condition context))))
 
 (defun real-condition (condition)
@@ -509,16 +519,16 @@ the error-context redundant."
   (let ((sb-int:*print-condition-references* nil))
     (princ-to-string condition)))
 
-(defun long-compiler-message-for-emacs (condition error-context)
+(defun compiler-error-context (error-context)
   "Describe a compiler error for Emacs including context information."
   (declare (type (or sb-c::compiler-error-context null) error-context))
   (multiple-value-bind (enclosing source)
       (if error-context
           (values (sb-c::compiler-error-context-enclosing-source error-context)
                   (sb-c::compiler-error-context-source error-context)))
-    (let ((sb-int:*print-condition-references* nil))
-      (format nil "~@[--> ~{~<~%--> ~1:;~A~> ~}~%~]~@[~{==>~%~A~%~}~]~A"
-              enclosing source condition))))
+    (and (or enclosing source)
+         (format nil "~@[--> ~{~<~%--> ~1:;~A~> ~}~%~]~@[~{==>~%~A~%~}~]"
+                 enclosing source))))
 
 (defun compiler-source-path (context)
   "Return the source-path for the current compiler error.
@@ -576,10 +586,14 @@ compiler state."
 ;;;     (compile nil `(lambda () ,(read-from-string string)))
 ;;; did not provide.
 
+(locally (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
+
 (sb-alien:define-alien-routine (#-win32 "tempnam" #+win32 "_tempnam" tempnam)
     sb-alien:c-string
   (dir sb-alien:c-string)
   (prefix sb-alien:c-string))
+
+)
 
 (defun temp-file-name ()
   "Return a temporary file name to compile strings into."
@@ -615,7 +629,10 @@ compiler state."
                                         :emacs-filename filename
                                         :emacs-string string
                                         :emacs-position position))
-                 (funcall cont (compile-file temp-file-name))))))
+                 (multiple-value-bind (output-file warningsp failurep)
+                     (compile-file temp-file-name)
+                   (unless failurep
+                     (funcall cont output-file)))))))
       (with-open-file (s temp-file-name :direction :output :if-exists :error)
         (write-string string s))
       (unwind-protect
@@ -1118,7 +1135,7 @@ stack."
       (handler-case (code-location-source-location code-location)
         (error (c) (list :error (format nil "~A" c))))))
 
-(defimplementation frame-source-location-for-emacs (index)
+(defimplementation frame-source-location (index)
   (safe-source-location-for-emacs
    (sb-di:frame-code-location (nth-frame index))))
 
