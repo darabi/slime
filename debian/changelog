@@ -3,8 +3,9 @@ slime (1:20090908-1) unstable; urgency=low
   * New upstream
   * Updated README.building
   * Updated Standards-Version no real changes
+  * Added dummy debian/watch file
 
- -- Peter Van Eynde <pvaneynd@debian.org>  Thu, 10 Sep 2009 09:17:33 +0100
+ -- Peter Van Eynde <pvaneynd@debian.org>  Thu, 10 Sep 2009 09:18:16 +0100
 
 slime (1:20090816-1) unstable; urgency=low
 
