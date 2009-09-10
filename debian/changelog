@@ -1,3 +1,9 @@
+slime (1:20090908-1) unstable; urgency=low
+
+  * New upstream
+
+ -- Peter Van Eynde <pvaneynd@debian.org>  Thu, 10 Sep 2009 09:11:23 +0100
+
 slime (1:20090816-1) unstable; urgency=low
 
   * New upstream 
