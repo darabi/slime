@@ -1,12 +1,43 @@
-to update from new upstream:
+To build this package you need to get the git repository:
+
+git clone http://git.debian.org/git/pkg-common-lisp/slime.git
+
+Get the upstream branch too:
+
+cd slime
+git checkout -t -b upstream remotes/origin/upstream
+git checkout -t -b origin remotes/origin/origin
+
+Then you need to setup the following remotes:
+
+git remote add upstream http://common-lisp.net/project/asdf/asdf.git
+
+To update the package from upstream do:
 
 git checkout origin
 git cvsimport -v -d :pserver:anonymous@common-lisp.net:/project/slime/cvsroot slime
 
-git checkout upstrem
+git checkout upstream
 git pull . origin
 rm -f xref.lisp && git commit -a -m 'removed xref.lisp again!'
+head ChangeLog 
+
+check the date
+
 git tag upstream/<date>
 
 git checkout master
 git pull . upstream
+
+dch -i 
+
+To build:
+
+git-buildpackage -uc -us
+
+please check your package with:
+
+lintian --verbose --info --display-info --md5sums *.changes
+
+Then commit any changes and either send me the diff or push this to somewhere were I can fetch it.
+ 
