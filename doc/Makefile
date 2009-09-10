@@ -96,6 +96,8 @@ uninstall-info:
 		install-info --infodir="$(infodir)" --remove "$(infodir)/$(infofiles)" || :; fi
 	rm -f $(infodir)/$(infofiles)
 
+SHELL=/bin/bash
+
 clean:
 	rm -f contributors.texi
 	rm -f slime.{aux,cp,cps,fn,fns,ky,kys,log,pg,tmp,toc,tp,vr,vrs}
