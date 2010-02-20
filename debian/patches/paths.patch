@@ -1,7 +1,7 @@
 Index: slime/slime.el
 ===================================================================
---- slime.orig/slime.el	2010-02-20 19:05:49.000000000 +0100
-+++ slime/slime.el	2010-02-20 19:06:40.000000000 +0100
+--- slime.orig/slime.el	2010-02-20 22:25:53.000000000 +0100
++++ slime/slime.el	2010-02-20 22:25:56.000000000 +0100
 @@ -117,7 +117,7 @@
      "Return the datestring of the latest entry in the ChangeLog file.
  Return nil if the ChangeLog file cannot be found."
@@ -13,9 +13,9 @@ Index: slime/slime.el
          (with-temp-buffer 
 Index: slime/swank-loader.lisp
 ===================================================================
---- slime.orig/swank-loader.lisp	2010-02-20 19:05:34.000000000 +0100
-+++ slime/swank-loader.lisp	2010-02-20 19:05:43.000000000 +0100
-@@ -105,7 +105,7 @@
+--- slime.orig/swank-loader.lisp	2010-02-20 22:25:49.000000000 +0100
++++ slime/swank-loader.lisp	2010-02-20 22:25:56.000000000 +0100
+@@ -106,7 +106,7 @@
  (defun slime-version-string ()
    "Return a string identifying the SLIME version.
  Return nil if nothing appropriate is available."
@@ -24,7 +24,7 @@ Index: slime/swank-loader.lisp
                       :if-does-not-exist nil)
      (and s (symbol-name (read s)))))
  
-@@ -119,10 +119,14 @@
+@@ -123,10 +123,14 @@
  
  (defun binary-pathname (src-pathname binary-dir)
    "Return the pathname where SRC-PATHNAME's binary should be compiled."
@@ -40,5 +40,5 @@ Index: slime/swank-loader.lisp
 +                      :type (pathname-type cfp))
 +                     (clc:calculate-fasl-root))))
  
- (defun handle-loadtime-error (condition binary-pathname)
-   (pprint-logical-block (*error-output* () :per-line-prefix ";; ")
+ (defun handle-swank-load-error (condition context pathname)
+   (fresh-line *error-output*)
