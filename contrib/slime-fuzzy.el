@@ -226,7 +226,6 @@ Complete listing of keybindings with *Fuzzy Completions*:
 		  (string prefix))))
     (slime-eval `(swank:fuzzy-completions ,prefix 
                                           ,(or default-package
-                                               (slime-find-buffer-package)
                                                (slime-current-package))
                   :limit ,slime-fuzzy-completion-limit
                   :time-limit-in-msec ,slime-fuzzy-completion-time-limit-in-msec))))
@@ -347,7 +346,8 @@ the completion slot in the current buffer bounded by `start' and
 `end'.  This saves the window configuration before popping the
 buffer so that it can possibly be restored when the user is
 done."
-  (let ((new-completion-buffer (not slime-fuzzy-target-buffer)))
+  (let ((new-completion-buffer (not slime-fuzzy-target-buffer))
+        (connection (slime-connection)))
     (when new-completion-buffer
       (setq slime-fuzzy-saved-window-configuration
             (current-window-configuration)))
@@ -360,6 +360,7 @@ done."
     (setq slime-fuzzy-text slime-fuzzy-original-text)
     (slime-fuzzy-fill-completions-buffer completions interrupted-p)
     (pop-to-buffer (slime-get-fuzzy-buffer))
+    (setq slime-buffer-connection connection)
     (when new-completion-buffer
       ;; Hook to nullify window-config restoration if the user changes
       ;; the window configuration himself.
@@ -367,6 +368,7 @@ done."
         (add-hook 'window-configuration-change-hook
                   'slime-fuzzy-window-configuration-change))
       (slime-add-local-hook 'kill-buffer-hook 'slime-fuzzy-abort)
+      (set (make-local-variable 'cursor-type) nil)
       (setq buffer-quit-function 'slime-fuzzy-abort)) ; M-Esc Esc
     (when slime-fuzzy-completion-in-place
       ;; switch back to the original buffer
@@ -593,12 +595,11 @@ configuration was changed, we nullify our saved configuration."
 ;;; Initialization 
 
 (defun slime-fuzzy-init ()
-  (slime-fuzzy-bind-keys))
+  (slime-fuzzy-bind-keys)
+  (slime-require :swank-fuzzy))
 
 (defun slime-fuzzy-bind-keys ()
   (define-key slime-mode-map "\C-c\M-i" 'slime-fuzzy-complete-symbol)
   (define-key slime-repl-mode-map "\C-c\M-i" 'slime-fuzzy-complete-symbol))
-
-(slime-require :swank-fuzzy)
 
 (provide 'slime-fuzzy)
