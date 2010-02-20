@@ -1,6 +1,7 @@
 slime (1:20100220-1) unstable; urgency=low
 
   * New upstream.
+  * New comaintainer: Milan Zamazal <pdm@debian.org>.
   * Separate Debian patches into debian/patches/.
   * Switch to dpkg-source 3.0 (quilt) format.
 
