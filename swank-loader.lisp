@@ -40,7 +40,7 @@
   #+clozure '(metering swank-ccl swank-gray)
   #+lispworks '(swank-lispworks swank-gray)
   #+allegro '(swank-allegro swank-gray)
-  #+clisp '(#+() xref metering swank-clisp swank-gray)
+  #+clisp '(xref metering swank-clisp swank-gray)
   #+armedbear '(swank-abcl)
   #+cormanlisp '(swank-corman swank-gray)
   #+ecl '(swank-source-path-parser swank-source-file-cache
@@ -106,7 +106,7 @@ operating system, and hardware architecture."
 (defun slime-version-string ()
   "Return a string identifying the SLIME version.
 Return nil if nothing appropriate is available."
-  (with-open-file (s "/usr/share/doc/cl-swank/changelog" 
+  (with-open-file (s (merge-pathnames "ChangeLog" *source-directory*)
                      :if-does-not-exist nil)
     (and s (symbol-name (read s)))))
 
@@ -123,14 +123,10 @@ Return nil if nothing appropriate is available."
 
 (defun binary-pathname (src-pathname binary-dir)
   "Return the pathname where SRC-PATHNAME's binary should be compiled."
-  (declare (ignore binary-dir))
   (let ((cfp (compile-file-pathname src-pathname)))
-    (merge-pathnames (make-pathname 
-                      :directory
-                      `(:relative "swank" "fasl" ,(unique-dir-name))
-                      :name (pathname-name cfp)
-                      :type (pathname-type cfp))
-                     (clc:calculate-fasl-root))))
+    (merge-pathnames (make-pathname :name (pathname-name cfp)
+                                    :type (pathname-type cfp))
+                     binary-dir)))
 
 (defun handle-swank-load-error (condition context pathname)
   (fresh-line *error-output*)

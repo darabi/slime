@@ -1,0 +1,33 @@
+Index: slime/swank-clisp.lisp
+===================================================================
+--- slime.orig/swank-clisp.lisp	2010-02-20 19:00:13.000000000 +0100
++++ slime/swank-clisp.lisp	2010-02-20 19:03:06.000000000 +0100
+@@ -629,6 +629,7 @@
+ 
+ ;;;; Portable XREF from the CMU AI repository.
+ 
++#| PVE remove xref
+ (setq pxref::*handle-package-forms* '(cl:in-package))
+ 
+ (defmacro defxref (name function)
+@@ -641,6 +642,7 @@
+ (defxref who-sets       pxref:list-setters)
+ (defxref list-callers   pxref:list-callers)
+ (defxref list-callees   pxref:list-callees)
++|#
+ 
+ (defun xref-results (symbols)
+   (let ((xrefs '()))
+Index: slime/swank-loader.lisp
+===================================================================
+--- slime.orig/swank-loader.lisp	2010-02-20 19:04:37.000000000 +0100
++++ slime/swank-loader.lisp	2010-02-20 19:04:43.000000000 +0100
+@@ -40,7 +40,7 @@
+   #+clozure '(metering swank-ccl swank-gray)
+   #+lispworks '(swank-lispworks swank-gray)
+   #+allegro '(swank-allegro swank-gray)
+-  #+clisp '(xref metering swank-clisp swank-gray)
++  #+clisp '(#+() xref metering swank-clisp swank-gray)
+   #+armedbear '(swank-abcl)
+   #+cormanlisp '(swank-corman swank-gray)
+   #+ecl '(swank-source-path-parser swank-source-file-cache

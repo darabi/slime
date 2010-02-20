@@ -1,0 +1,29 @@
+Index: slime/slime.el
+===================================================================
+--- slime.orig/slime.el	2010-02-20 18:57:38.000000000 +0100
++++ slime/slime.el	2010-02-20 18:57:49.000000000 +0100
+@@ -132,6 +132,15 @@
+ (setq slime-protocol-version
+       (eval-when-compile (slime-changelog-date)))
+ 
++(defun slime-gather-lisp-implementations ()
++  "Compute sane default value for slime-lisp-implementations."
++  (let ((known-lisps '("sbcl" "clisp" "ecl" "cmucl")))
++    (remove-if
++     'null
++     (mapcar 
++      (lambda (l) (if (executable-find l) (list l (list l))))
++      known-lisps))))
++
+ 
+ ;;;; Customize groups
+ ;;
+@@ -1012,7 +1021,7 @@
+ (defvar inferior-lisp-program "lisp" 
+   "*Program name for invoking an inferior Lisp with for Inferior Lisp mode.")
+ 
+-(defvar slime-lisp-implementations nil
++(defvar slime-lisp-implementations (slime-gather-lisp-implementations)
+   "*A list of known Lisp implementations.
+ The list should have the form: 
+   ((NAME (PROGRAM PROGRAM-ARGS...) &key KEYWORD-ARGS) ...)
