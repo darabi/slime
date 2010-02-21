@@ -5,8 +5,9 @@ slime (1:20100220-1) unstable; urgency=low
   * Separate Debian patches into debian/patches/.
   * Switch to dpkg-source 3.0 (quilt) format.
   * Standards 3.8.4 (no real change).
+  * Build and install slime-refcard.pdf.
 
- -- Milan Zamazal <pdm@debian.org>  Sat, 20 Feb 2010 18:42:22 +0100
+ -- Milan Zamazal <pdm@debian.org>  Sun, 21 Feb 2010 18:24:12 +0100
 
 slime (1:20090908-1) unstable; urgency=low
 
