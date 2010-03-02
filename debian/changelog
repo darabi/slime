@@ -1,3 +1,9 @@
+slime (1:20100220-2) unstable; urgency=low
+
+  * Fix Emacs dependencies; closes: #533725, #553484.
+
+ -- Milan Zamazal <pdm@debian.org>  Tue, 02 Mar 2010 09:55:08 +0100
+
 slime (1:20100220-1) unstable; urgency=low
 
   * New upstream.
