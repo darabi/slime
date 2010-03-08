@@ -65,6 +65,9 @@ cp ${FILES} ${ELCDIR}
 cd ${ELDIR}/contrib
 CFILES=`echo *.el`
 cp ${CFILES} ${ELCDIR}/contrib/
+if [ "${FLAVOR}" = xemacs21 ]; then
+  rm -f ${ELCDIR}/contrib/slime-autodoc.el
+fi
 
 cd ${ELCDIR}
 
