@@ -57,16 +57,17 @@ if [ -d "${ELCDIR}/contrib" ] ; then
 fi
 
 install -m 755 -d ${ELCDIR}
-install -m 755 -d ${ELCDIR}/contrib
+if [ "${FLAVOR}" != xemacs21 ]; then
+  install -m 755 -d ${ELCDIR}/contrib
+fi
 cd ${ELDIR}
 FILES=`echo *.el`
 cp ${FILES} ${ELCDIR}
 
-cd ${ELDIR}/contrib
-CFILES=`echo *.el`
-cp ${CFILES} ${ELCDIR}/contrib/
-if [ "${FLAVOR}" = xemacs21 ]; then
-  rm -f ${ELCDIR}/contrib/slime-autodoc.el
+if [ "${FLAVOR}" != xemacs21 ]; then
+  cd ${ELDIR}/contrib
+  CFILES=`echo *.el`
+  cp ${CFILES} ${ELCDIR}/contrib/
 fi
 
 cd ${ELCDIR}
@@ -74,10 +75,12 @@ cd ${ELCDIR}
 cat << EOF > path.el
 (setq load-path (cons "." load-path) byte-compile-warnings nil)
 EOF
-${FLAVOR} ${FLAGS} `for i in ${FILES} ; do echo -l ${ELCDIR}/$i ; done` \
-                   `for i in ${CFILES} ; do echo -l ${ELCDIR}/contrib/$i ; done` \
-		    -f batch-byte-compile \
-		    ${FILES} `for i in ${CFILES} ; do echo contrib/$i ; done` 
+if [ "${FLAVOR}" != xemacs21 ]; then
+  ${FLAVOR} ${FLAGS} `for i in ${FILES} ; do echo -l ${ELCDIR}/$i ; done` \
+                     `for i in ${CFILES} ; do echo -l ${ELCDIR}/contrib/$i ; done` \
+                      -f batch-byte-compile \
+                      ${FILES} `for i in ${CFILES} ; do echo contrib/$i ; done`
+fi
 rm -f *.el path.el
 
 ## while in ${ELCDIR}
@@ -92,11 +95,13 @@ for FILE in $FILES ; do
   fi
 done
 
-cd ${ELCDIR}/contrib
-for FILE in $CFILES ; do 
-  if ! [ -e $FILE ];  then
-  ## note that these will not be 'relative' symlinks.
-    ln -s ${ELDIR}/contrib/$FILE .
-  fi
-done
+if [ "${FLAVOR}" != xemacs21 ]; then
+  cd ${ELCDIR}/contrib
+  for FILE in $CFILES ; do 
+    if ! [ -e $FILE ];  then
+    ## note that these will not be 'relative' symlinks.
+      ln -s ${ELDIR}/contrib/$FILE .
+    fi
+  done
+fi
 exit 0
