@@ -41,7 +41,7 @@ if [ -d "${ELCDIR}" ] ; then
     # we use find to protect against 'bad' filenames
     find "${ELCDIR}" -maxdepth 1 -name "*.el" -print0 | \
       xargs -0 rm || true
-    rm "${ELCDIR}/ChangeLog" || true
+    rm -f "${ELCDIR}/ChangeLog"
   fi
 fi
 
