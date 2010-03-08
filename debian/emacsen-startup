@@ -23,10 +23,13 @@
 (setq slime-backend
       "/usr/share/common-lisp/source/slime/swank-loader.lisp")
 
-(load (concat "/usr/share/"
-	      (if (boundp 'flavor) (symbol-name flavor)
-	          "emacs")
-            "/site-lisp/slime/slime-autoloads"))
+(let ((slime-autoloads (concat "/usr/share/"
+                               (if (boundp 'flavor) (symbol-name flavor)
+                                 "emacs")
+                               "/site-lisp/slime/slime-autoloads.elc")))
+  (if (file-exists-p slime-autoloads)
+      (load slime-autoloads)
+    (load "/usr/share/emacs/site-lisp/slime/slime-autoloads.el")))
 
 (eval-after-load "slime"
   '(progn
