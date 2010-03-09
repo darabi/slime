@@ -1,3 +1,9 @@
+slime (1:20100220-4) unstable; urgency=low
+
+  * Make cl-swank working with current common-lisp-controller etc.
+
+ -- Milan Zamazal <pdm@debian.org>  Tue, 09 Mar 2010 08:37:16 +0100
+
 slime (1:20100220-3) unstable; urgency=low
 
   * Don't install contrib files for XEmacs; closes: #572594.

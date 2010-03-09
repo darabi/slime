@@ -31,7 +31,7 @@ Description: Superior LISP Interaction Mode for Emacs
 
 Package: cl-swank
 Architecture: all
-Depends: ${misc:Depends}
+Depends: cl-asdf (>= 2:1.627), ${misc:Depends}
 Suggests: slime
 Replaces: slime (<< 1:20050929-1)
 Conflicts: slime (<< 1:20050929-1)
