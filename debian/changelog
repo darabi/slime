@@ -1,3 +1,9 @@
+slime (1:20100605-1) unstable; urgency=low
+
+  * New upstream.
+
+ -- Milan Zamazal <pdm@debian.org>  Sat, 05 Jun 2010 10:08:58 +0200
+
 slime (1:20100220-4) unstable; urgency=low
 
   * Make cl-swank working with current common-lisp-controller etc.
