@@ -1,6 +1,7 @@
 slime (1:20100605-1) unstable; urgency=low
 
   * New upstream.
+  * Don't add tree-widget.el anymore; closes: #583697.
 
  -- Milan Zamazal <pdm@debian.org>  Sat, 05 Jun 2010 10:08:58 +0200
 

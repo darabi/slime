@@ -34,9 +34,6 @@ GPL-v2:
 	;;     Copyright (C) 2003  Eric Marsden, Luke Gorrie, Helmut Eller
 	;;     Copyright (C) 2004  Luke Gorrie, Helmut Eller
 	
-	tree-widget.el
-	;; Copyright (C) 2004 Free Software Foundation, Inc.
-	
 	On Debian systems, the complete text of the GNU General
 	Public License can be found in `/usr/share/common-licenses/GPL-2'.
 
