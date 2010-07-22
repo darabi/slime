@@ -1,10 +1,10 @@
 Index: slime/slime.el
 ===================================================================
---- slime.orig/slime.el	2010-02-20 18:57:38.000000000 +0100
-+++ slime/slime.el	2010-02-20 18:57:49.000000000 +0100
+--- slime.orig/slime.el	2010-07-22 10:39:10.000000000 +0200
++++ slime/slime.el	2010-07-22 10:39:18.000000000 +0200
 @@ -132,6 +132,15 @@
- (setq slime-protocol-version
-       (eval-when-compile (slime-changelog-date)))
+ (defvar slime-protocol-version nil)
+ (setq slime-protocol-version (slime-changelog-date))
  
 +(defun slime-gather-lisp-implementations ()
 +  "Compute sane default value for slime-lisp-implementations."
@@ -18,7 +18,7 @@ Index: slime/slime.el
  
  ;;;; Customize groups
  ;;
-@@ -1012,7 +1021,7 @@
+@@ -1023,7 +1032,7 @@
  (defvar inferior-lisp-program "lisp" 
    "*Program name for invoking an inferior Lisp with for Inferior Lisp mode.")
  

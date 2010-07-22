@@ -1,0 +1,14 @@
+Index: slime/slime.el
+===================================================================
+--- slime.orig/slime.el	2010-07-22 10:30:16.000000000 +0200
++++ slime/slime.el	2010-07-22 10:30:37.000000000 +0200
+@@ -130,8 +130,7 @@
+       date)))
+ 
+ (defvar slime-protocol-version nil)
+-(setq slime-protocol-version
+-      (eval-when-compile (slime-changelog-date)))
++(setq slime-protocol-version (slime-changelog-date))
+ 
+ 
+ ;;;; Customize groups

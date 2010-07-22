@@ -1,6 +1,8 @@
 slime (1:20100722-1) unstable; urgency=low
 
   * New upstream.
+  * Don't set slime-protocol-version at compile time, this is both
+    unnecessary and harmful in Debian; closes: #588575.
 
  -- Milan Zamazal <pdm@debian.org>  Thu, 22 Jul 2010 10:38:15 +0200
 
