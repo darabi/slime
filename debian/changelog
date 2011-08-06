@@ -1,10 +1,12 @@
-slime (1:20100722-2) UNRELEASED; urgency=low
+slime (1:20110806-1) unstable; urgency=low
+
+  * New upstream.
 
   [ Luca Capello ]
   * debian/control:
     + remove myself from Uploaders:.
 
- --
+ -- Milan Zamazal <pdm@debian.org>  Sat, 06 Aug 2011 11:04:32 +0200
 
 slime (1:20100722-1) unstable; urgency=low
 
