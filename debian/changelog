@@ -1,6 +1,7 @@
 slime (1:20110806-1) unstable; urgency=low
 
   * New upstream.
+  * Missing build-* targets added to debian/rules.
   * Standards 3.9.2 (no real change).
 
   [ Luca Capello ]
