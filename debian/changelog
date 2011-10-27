@@ -1,6 +1,8 @@
 slime (1:20111027-1) unstable; urgency=low
 
   * New upstream.
+  * Load ASDF before attempting to use it in swank-loader.lisp;
+    closes: #640815, #646037.
 
  -- Milan Zamazal <pdm@debian.org>  Thu, 27 Oct 2011 19:50:38 +0200
 
