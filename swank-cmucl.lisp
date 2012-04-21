@@ -405,8 +405,9 @@ NIL if we aren't compiling from a buffer.")
       (funcall function))))
 
 (defimplementation swank-compile-file (input-file output-file
-                                       load-p external-format)
-  (declare (ignore external-format))
+                                       load-p external-format
+                                       &key policy)
+  (declare (ignore external-format policy))
   (clear-xref-info input-file)
   (with-compilation-hooks ()
     (let ((*buffer-name* nil)
@@ -911,20 +912,16 @@ See CODE-LOCATION-STREAM-POSITION."
 regular functions, generic functions, methods and macros.
 NAME can any valid function name (e.g, (setf car))."
   (let ((macro?    (and (symbolp name) (macro-function name)))
-        (special?  (and (symbolp name) (special-operator-p name)))
         (function? (and (ext:valid-function-name-p name)
                         (ext:info :function :definition name)
                         (if (symbolp name) (fboundp name) t))))
     (cond (macro? 
            (list `((defmacro ,name)
                    ,(function-location (macro-function name)))))
-          (special?
-           (list `((:special-operator ,name) 
-                   (:error ,(format nil "Special operator: ~S" name)))))
           (function?
            (let ((function (fdefinition name)))
              (if (genericp function)
-                 (generic-function-definitions name function)
+                 (gf-definitions name function)
                  (list (list `(function ,name)
                              (function-location function)))))))))
 
@@ -1028,7 +1025,7 @@ Signal an error if no constructor can be found."
 
 ;;;;;; Generic functions and methods
 
-(defun generic-function-definitions (name function)
+(defun gf-definitions (name function)
   "Return the definitions of a generic function and its methods."
   (cons (list `(defgeneric ,name) (gf-location function))
         (gf-method-definitions function)))
@@ -1897,10 +1894,13 @@ Try to create a informative message."
       (delete-file name))))
 
 (defun gdb-command (format-string &rest args)
-  (let ((str (gdb-exec (format nil "attach ~d~%~a~%detach" 
+  (let ((str (gdb-exec (format nil 
+                               "interpreter-exec mi2 \"attach ~d\"~%~
+                                interpreter-exec console ~s~%detach"
                                (getpid)
-                               (apply #'format nil format-string args)))))
-    (subseq str (1+ (position #\newline str)))))
+                               (apply #'format nil format-string args))))
+        (prompt (format nil "~%^done~%(gdb) ~%")))
+    (subseq str (+ (search prompt str) (length prompt)))))
 
 (defun gdb-exec (cmd)
   (with-temporary-file (file filename)
@@ -1941,15 +1941,15 @@ Try to create a informative message."
       (cond ((equal w1 "Line")
              (let ((line (read-word)))
                (assert (equal (read-word) "of"))
-               (let ((file (read-word)))
-                 (make-location (list :file 
-                                      (unix-truename 
-                                       (merge-pathnames 
-                                        (read-from-string file)
-                                        (format nil "~a/lisp/"
-                                                (unix-truename "target:")))))
+               (let* ((file (read-from-string (read-word)))
+                      (pathname
+                       (or (probe-file file)
+                           (probe-file (format nil "target:lisp/~a" file))
+                           file)))
+                 (make-location (list :file (unix-truename pathname))
                                 (list :line (parse-integer line))))))
-            (t `(:error ,string))))))
+            (t 
+             `(:error ,string))))))
 
 (defun read-word (&optional (stream *standard-input*))
   (peek-char t stream)
@@ -2485,10 +2485,3 @@ int main (int argc, char** argv) {
       (call-program args :output t)
       (delete-file infile)
       outfile)))
-
-;; (save-image "/tmp/x.core")
-
-;; Local Variables:
-;; pbook-heading-regexp:    "^;;;\\(;+\\)"
-;; pbook-commentary-regexp: "^;;;\\($\\|[^;]\\)"
-;; End:
