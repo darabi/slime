@@ -1,3 +1,30 @@
+2010-07-16  Stas Boukarev  <stassats@gmail.com>
+
+	* slime-repl.el (slime-call-defun): Handle setf-functions.
+
+2010-07-04  Stas Boukarev  <stassats@gmail.com>
+
+	* swank-asdf.lisp (asdf:operation-done-p): Fix reloading on
+	ASDF2. ASDF2 no longer has `asdf:around' method combination.
+
+2010-07-02  Stas Boukarev  <stassats@gmail.com>
+
+	* swank-fancy-inspector.lisp (docstring-ispec): Don't insert an
+	unnecessary space.
+	(emacs-inspect): Delete unnecessary "it" in [... it]
+	buttons.
+	Don't capitalize every word in some messages.
+
+2010-06-15  Stas Boukarev  <stassats@gmail.com>
+
+	* swank-asdf.lisp (asdf-central-registry): Use an exported
+	interface for ASDF2.
+
+2010-06-14  Stas Boukarev  <stassats@gmail.com>
+
+	* swank-asdf.lisp (asdf-central-registry): ASDF2 compatibility.
+	Patch by Leo Liu.
+
 2010-06-04  Helmut Eller  <heller@common-lisp.net>
 
 	* inferior-slime.el (inferior-slime-show-transcript): Update
