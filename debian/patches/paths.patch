@@ -1,8 +1,8 @@
 Index: slime/slime.el
 ===================================================================
---- slime.orig/slime.el	2011-10-27 22:17:07.000000000 +0200
-+++ slime/slime.el	2011-10-27 22:17:07.000000000 +0200
-@@ -117,7 +117,7 @@
+--- slime.orig/slime.el	2012-04-21 21:47:22.000000001 +0200
++++ slime/slime.el	2012-04-21 21:47:36.000000001 +0200
+@@ -119,7 +119,7 @@
      "Return the datestring of the latest entry in the ChangeLog file.
  Return nil if the ChangeLog file cannot be found."
      (interactive "p")
@@ -13,11 +13,11 @@ Index: slime/slime.el
          (with-temp-buffer 
 Index: slime/swank-loader.lisp
 ===================================================================
---- slime.orig/swank-loader.lisp	2011-10-27 22:17:07.000000000 +0200
-+++ slime/swank-loader.lisp	2011-10-27 22:18:58.000000000 +0200
-@@ -18,6 +18,10 @@
- ;;   (defparameter swank-loader::*fasl-directory* "/tmp/fasl/")
- ;;   (load ".../swank-loader.lisp")
+--- slime.orig/swank-loader.lisp	2012-04-21 21:47:09.000000001 +0200
++++ slime/swank-loader.lisp	2012-04-21 21:47:36.000000001 +0200
+@@ -17,6 +17,10 @@
+ ;;   (setq swank-loader::*fasl-directory* "/tmp/fasl/")
+ ;;   (swank-loader:init)
  
 +
 +(handler-case (require :asdf)
@@ -26,7 +26,7 @@ Index: slime/swank-loader.lisp
  (cl:defpackage :swank-loader
    (:use :cl)
    (:export :init
-@@ -119,7 +123,7 @@
+@@ -122,7 +126,7 @@
  (defun slime-version-string ()
    "Return a string identifying the SLIME version.
  Return nil if nothing appropriate is available."
@@ -35,7 +35,7 @@ Index: slime/swank-loader.lisp
                       :if-does-not-exist nil)
      (and s (symbol-name (read s)))))
  
-@@ -136,10 +140,11 @@
+@@ -139,10 +143,11 @@
  
  (defun binary-pathname (src-pathname binary-dir)
    "Return the pathname where SRC-PATHNAME's binary should be compiled."
