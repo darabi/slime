@@ -1,3 +1,9 @@
+slime (1:20120420-1) unstable; urgency=low
+
+  * New upstream.
+
+ -- Milan Zamazal <pdm@debian.org>  Sat, 21 Apr 2012 21:42:23 +0200
+
 slime (1:20111027-2) unstable; urgency=low
 
   * Get slime changelog version from slime, not cl-swank, directory;
