@@ -57,12 +57,24 @@
 (defparameter *architecture-features*
   '(:powerpc :ppc :x86 :x86-64 :amd64 :i686 :i586 :i486 :pc386 :iapx386
     :sparc64 :sparc :hppa64 :hppa
-    :pentium3 :pentium4))
+    :pentium3 :pentium4
+    :java-1.4 :java-1.5 :java-1.6 :java-1.7))
+
+(defun q (s) (read-from-string s))
+
+#+ecl
+(defun ecl-version-string ()
+  (format nil "~A~@[-~A~]"
+          (lisp-implementation-version)
+          (when (find-symbol "LISP-IMPLEMENTATION-VCS-ID" :ext)
+            (let ((vcs-id (funcall (q "ext:lisp-implementation-vcs-id"))))
+              (when (>= (length vcs-id) 8)
+                (subseq vcs-id 0 8))))))
 
 (defun lisp-version-string ()
   #+(or clozure cmu) (substitute-if #\_ (lambda (x) (find x " /"))
                                     (lisp-implementation-version))
-  #+(or cormanlisp scl sbcl ecl)       (lisp-implementation-version)
+  #+(or cormanlisp scl sbcl) (lisp-implementation-version)
   #+lispworks (lisp-implementation-version)
   #+allegro   (format nil "~A~A~A~A"
                       excl::*common-lisp-version-number*
@@ -73,7 +85,8 @@
                        (:+ics "-ics")))
   #+clisp     (let ((s (lisp-implementation-version)))
                 (subseq s 0 (position #\space s)))
-  #+armedbear (lisp-implementation-version))
+  #+armedbear (lisp-implementation-version)
+  #+ecl (ecl-version-string) )
 
 (defun unique-dir-name ()
   "Return a name that can be used as a directory name that is
@@ -207,7 +220,7 @@ If LOAD is true, load the fasl file."
     #+(or asdf sbcl ecl) swank-asdf
     swank-package-fu
     swank-hyperdoc
-    swank-sbcl-exts
+    #+sbcl swank-sbcl-exts
     )
   "List of names for contrib modules.")
 
@@ -218,8 +231,6 @@ If LOAD is true, load the fasl file."
 
 (defun contrib-dir (base-dir)
   (append-dir base-dir "contrib"))
-
-(defun q (s) (read-from-string s))
 
 (defun load-swank (&key (src-dir *source-directory*)
                         (fasl-dir *fasl-directory*))

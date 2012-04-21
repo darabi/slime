@@ -605,7 +605,9 @@ Execute BODY with NAME's function slot set to FUNCTION."
                           :location (compiler-note-location))))
 
 (defimplementation swank-compile-file (input-file output-file
-                                       load-p external-format)
+                                       load-p external-format
+                                       &key policy)
+  (declare (ignore policy))
   (with-compilation-hooks ()
     (with-compilation-unit ()
       (multiple-value-bind (fasl-file warningsp failurep)
@@ -846,8 +848,3 @@ Execute BODY with NAME's function slot set to FUNCTION."
                 ,@(if restart-function 
                       `((:init-function ,restart-function))))))
     (apply #'ext:saveinitmem args)))
-
-;;; Local Variables:
-;;; eval: (put 'compile-file-frobbing-notes 'lisp-indent-function 1)
-;;; eval: (put 'dynamic-flet 'common-lisp-indent-function 1)
-;;; End:

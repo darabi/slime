@@ -12,12 +12,25 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (let ((version (find-symbol "+ECL-VERSION-NUMBER+" :EXT)))
-    (when (or (not version) (< (symbol-value version) 100201))
+    (when (or (not version) (< (symbol-value version) 100301))
       (error "~&IMPORTANT:~%  ~
               The version of ECL you're using (~A) is too old.~%  ~
-              Please upgrade to at least 10.2.1.~%  ~
+              Please upgrade to at least 10.3.1.~%  ~
               Sorry for the inconvenience.~%~%"
              (lisp-implementation-version)))))
+
+;; Hard dependencies.
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (require 'sockets))
+
+;; Soft dependencies.
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (when (probe-file "sys:profile.fas")
+    (require :profile)
+    (pushnew :profile *features*))
+  (when (probe-file "sys:serve-event.fas")
+    (require :serve-event)
+    (pushnew :serve-event *features*)))
 
 (declaim (optimize (debug 3)))
 
@@ -33,16 +46,17 @@
       :specializer-direct-methods
       :compute-applicable-methods-using-classes)))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (when (probe-file "sys:serve-event.fas")
-    (require :serve-event)
-    (pushnew :serve-event *features*)))
-
 
 ;;;; TCP Server
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (require 'sockets))
+(defimplementation preferred-communication-style ()
+  ;; While ECL does provide threads, some parts of it are not
+  ;; thread-safe (2010-02-23), including the compiler and CLOS.
+  nil
+  ;; ECL on Windows does not provide condition-variables
+  ;; (or #+(and threads (not windows)) :spawn
+  ;;     nil)
+  )
 
 (defun resolve-hostname (name)
   (car (sb-bsd-sockets:host-ent-addresses
@@ -61,56 +75,81 @@
   (nth-value 1 (sb-bsd-sockets:socket-name socket)))
 
 (defimplementation close-socket (socket)
-  (when (eq (preferred-communication-style) :fd-handler)
-    (remove-fd-handlers socket))
   (sb-bsd-sockets:socket-close socket))
 
 (defimplementation accept-connection (socket
                                       &key external-format
                                       buffering timeout)
-  (declare (ignore buffering timeout external-format))
+  (declare (ignore timeout))
   (sb-bsd-sockets:socket-make-stream (accept socket)
                                      :output t
                                      :input t
-                                     :element-type 'base-char))
+                                     :buffering buffering
+                                     :external-format external-format))
 (defun accept (socket)
   "Like socket-accept, but retry on EAGAIN."
   (loop (handler-case
             (return (sb-bsd-sockets:socket-accept socket))
           (sb-bsd-sockets:interrupted-error ()))))
 
-(defimplementation preferred-communication-style ()
-  ;; ECL on Windows does not provide condition-variables
-  (or #+ (and threads (not win32) (not win64)) :spawn
-      #+serve-event :fd-handler
-      nil))
+(defimplementation socket-fd (socket)
+  (etypecase socket
+    (fixnum socket)
+    (two-way-stream (socket-fd (two-way-stream-input-stream socket)))
+    (sb-bsd-sockets:socket (sb-bsd-sockets:socket-file-descriptor socket))
+    (file-stream (si:file-stream-fd socket))))
 
 (defvar *external-format-to-coding-system*
-  '((:iso-8859-1
+  '((:latin-1
      "latin-1" "latin-1-unix" "iso-latin-1-unix" 
      "iso-8859-1" "iso-8859-1-unix")
     (:utf-8 "utf-8" "utf-8-unix")))
 
+(defun external-format (coding-system)
+  (or (car (rassoc-if (lambda (x) (member coding-system x :test #'equal))
+                      *external-format-to-coding-system*))
+      (find coding-system (ext:all-encodings) :test #'string-equal)))
+
 (defimplementation find-external-format (coding-system)
-  (car (rassoc-if (lambda (x) (member coding-system x :test #'equal))
-                  *external-format-to-coding-system*)))
+  #+unicode (external-format coding-system)
+  ;; Without unicode support, ECL uses the one-byte encoding of the
+  ;; underlying OS, and will barf on anything except :DEFAULT.  We
+  ;; return NIL here for known multibyte encodings, so
+  ;; SWANK:CREATE-SERVER will barf.
+  #-unicode (let ((xf (external-format coding-system)))
+              (if (member xf '(:utf-8))
+                  nil
+                  :default)))
 
 
-;;;; Unix signals
+;;;; Unix Integration
 
-(defvar *original-sigint-handler* #'si:terminal-interrupt)
+;;; If ECL is built with thread support, it'll spawn a helper thread
+;;; executing the SIGINT handler. We do not want to BREAK into that
+;;; helper but into the main thread, though. This is coupled with the
+;;; current choice of NIL as communication-style in so far as ECL's
+;;; main-thread is also the Slime's REPL thread.
 
-(defimplementation install-sigint-handler (handler)
-  (declare (function handler))
-  (let ((old-handler (symbol-function 'si:terminal-interrupt)))
+(defimplementation call-with-user-break-handler (real-handler function)
+  (let ((old-handler #'si:terminal-interrupt))
     (setf (symbol-function 'si:terminal-interrupt)
-          (if (eq handler *original-sigint-handler*)
-              handler
-              (lambda (&rest args)
-                (declare (ignore args))
-                (funcall handler)
-                (continue))))
-    old-handler))
+          (make-interrupt-handler real-handler))
+    (unwind-protect (funcall function)
+      (setf (symbol-function 'si:terminal-interrupt) old-handler))))
+
+#+threads
+(defun make-interrupt-handler (real-handler)
+  (let ((main-thread (find 'si:top-level (mp:all-processes)
+                           :key #'mp:process-name)))
+    #'(lambda (&rest args)
+        (declare (ignore args))
+        (mp:interrupt-process main-thread real-handler))))
+
+#-threads
+(defun make-interrupt-handler (real-handler)
+  #'(lambda (&rest args)
+      (declare (ignore args))
+      (funcall real-handler)))
 
 
 (defimplementation getpid ()
@@ -127,45 +166,33 @@
   (ext:quit))
 
 
-;;;; Serve Event Handlers
 
-;;; FIXME: verify this is correct implementation
-
+;;; Instead of busy waiting with communication-style NIL, use select()
+;;; on the sockets' streams.
 #+serve-event
 (progn
-  
-(defun socket-fd (socket)
-  (etypecase socket
-    (fixnum socket)
-    (sb-bsd-sockets:socket (sb-bsd-sockets:socket-file-descriptor socket))
-    (file-stream (si:file-stream-fd socket))))
+  (defun poll-streams (streams timeout)
+    (let* ((serve-event::*descriptor-handlers*
+            (copy-list serve-event::*descriptor-handlers*))
+           (active-fds '())
+           (fd-stream-alist
+            (loop for s in streams
+                  for fd = (socket-fd s)
+                  collect (cons fd s)
+                  do (serve-event:add-fd-handler fd :input
+                                                 #'(lambda (fd)
+                                                     (push fd active-fds))))))
+      (serve-event:serve-event timeout)
+      (loop for fd in active-fds collect (cdr (assoc fd fd-stream-alist)))))
 
-(defvar *descriptor-handlers* (make-hash-table :test 'eql))
-
-(defimplementation add-fd-handler (socket fun)
-  (let* ((fd (socket-fd socket))
-         (handler (gethash fd *descriptor-handlers*)))
-    (when handler
-      (serve-event:remove-fd-handler handler))
-    (setf (gethash fd *descriptor-handlers*)
-          (serve-event:add-fd-handler fd :input #'(lambda (x)
-                                                    (declare (ignore x))
-                                                    (funcall fun))))
-    (serve-event:serve-event)))
-
-(defimplementation remove-fd-handlers (socket)
-  (let ((handler (gethash (socket-fd socket) *descriptor-handlers*)))
-    (when handler
-      (serve-event:remove-fd-handler handler))))
-
-(defimplementation wait-for-input (streams &optional timeout)
-  (assert (member timeout '(nil t)))
-  (loop
-     (let ((ready (remove-if-not #'listen streams)))
-       (when ready (return ready)))
-     ;; (when timeout (return nil))
-     (when (check-slime-interrupts) (return :interrupt))
-     (serve-event:serve-event)))
+  (defimplementation wait-for-input (streams &optional timeout)
+    (assert (member timeout '(nil t)))
+    (loop
+      (cond ((check-slime-interrupts) (return :interrupt))
+            (timeout (return (poll-streams streams 0)))
+            (t
+             (when-let (ready (poll-streams streams 0.2))
+               (return ready))))))  
 
 ) ; #+serve-event (progn ...
 
@@ -184,13 +211,13 @@
   (unless (typep condition 'c::compiler-note)
     (signal-compiler-condition
      :original-condition condition
-     :message (format nil "~A" condition)
+     :message (princ-to-string condition)
      :severity (etypecase condition
                  (c:compiler-fatal-error :error)
-                 (c:compiler-error :error)
-                 (error            :error)
-                 (style-warning    :style-warning)
-                 (warning          :warning))
+                 (c:compiler-error       :error)
+                 (error                  :error)
+                 (style-warning          :style-warning)
+                 (warning                :warning))
      :location (condition-location condition))))
 
 (defun condition-location (condition)
@@ -198,12 +225,10 @@
         (position (c:compiler-message-file-position condition)))
     (if (and position (not (minusp position)))
         (if *buffer-name*
-            (make-location `(:buffer ,*buffer-name*)
-                           `(:offset ,*buffer-start-position* ,position)
-                           `(:align t))
-            (make-location `(:file ,(namestring file))
-                           `(:position ,(1+ position))
-                           `(:align t)))
+            (make-buffer-location *buffer-name*
+                                  *buffer-start-position*
+                                  position)
+            (make-file-location file position))
         (make-error-location "No location found."))))
 
 (defimplementation call-with-compilation-hooks (function)
@@ -211,78 +236,58 @@
     (funcall function)))
 
 (defimplementation swank-compile-file (input-file output-file
-                                       load-p external-format)
-  (declare (ignore external-format))
+                                       load-p external-format
+                                       &key policy)
+  (declare (ignore policy))
   (with-compilation-hooks ()
-    (compile-file input-file :output-file output-file :load load-p)))
+    (compile-file input-file :output-file output-file
+                  :load load-p
+                  :external-format external-format)))
+
+(defvar *tmpfile-map* (make-hash-table :test #'equal))
+
+(defun note-buffer-tmpfile (tmp-file buffer-name)
+  ;; EXT:COMPILED-FUNCTION-FILE below will return a namestring.
+  (let ((tmp-namestring (namestring (truename tmp-file))))
+    (setf (gethash tmp-namestring *tmpfile-map*) buffer-name)
+    tmp-namestring))
+
+(defun tmpfile-to-buffer (tmp-file)
+  (gethash tmp-file *tmpfile-map*))
 
 (defimplementation swank-compile-string (string &key buffer position filename
-                                         policy)
-  (declare (ignore filename policy))
+                                                policy)
+  (declare (ignore policy))
   (with-compilation-hooks ()
-    (let ((*buffer-name* buffer)
+    (let ((*buffer-name* buffer)        ; for compilation hooks
           (*buffer-start-position* position))
-      (with-input-from-string (s string)
-        (not (nth-value 2 (compile-from-stream s :load t)))))))
-
-(defun compile-from-stream (stream &rest args)
-  (let ((file (si::mkstemp "TMP:ECLXXXXXX")))
-    (with-open-file (s file :direction :output :if-exists :overwrite)
-      (do ((line (read-line stream nil) (read-line stream nil)))
-	  ((not line))
-	(write-line line s)))
-    (unwind-protect
-         (apply #'compile-file file args)
-      (delete-file file))))
-
+      (let ((tmp-file (si:mkstemp "TMP:ecl-swank-tmpfile-"))
+            (fasl-file)
+            (warnings-p)
+            (failure-p))
+        (unwind-protect
+             (with-open-file (tmp-stream tmp-file :direction :output
+                                                  :if-exists :supersede)
+               (write-string string tmp-stream)
+               (finish-output tmp-stream)
+               (multiple-value-setq (fasl-file warnings-p failure-p)
+                 (compile-file tmp-file
+                   :load t
+                   :source-truename (or filename
+                                        (note-buffer-tmpfile tmp-file buffer))
+                   :source-offset (1- position))))
+          (when (probe-file tmp-file)
+            (delete-file tmp-file))
+          (when fasl-file
+            (delete-file fasl-file)))
+        (not failure-p)))))
 
 ;;;; Documentation
 
-(defun grovel-docstring-for-arglist (name type)
-  (flet ((compute-arglist-offset (docstring)
-           (when docstring
-             (let ((pos1 (search "Args: " docstring)))
-               (if pos1
-                   (+ pos1 6)
-                   (let ((pos2 (search "Syntax: " docstring)))
-                     (when pos2
-                       (+ pos2 8))))))))
-    (let* ((docstring (si::get-documentation name type))
-           (pos (compute-arglist-offset docstring)))
-      (if pos
-          (multiple-value-bind (arglist errorp)
-              (ignore-errors
-                (values (read-from-string docstring t nil :start pos)))
-            (if (or errorp (not (listp arglist)))
-                :not-available
-                ; ECL for some reason includes macro name at the first place
-                (if (or (macro-function name)
-                        (special-operator-p name)) 
-                    (cdr arglist)
-                    arglist)))
-          :not-available ))))
-
 (defimplementation arglist (name)
-  (cond ((and (symbolp name) (special-operator-p name))
-         (grovel-docstring-for-arglist name 'function))
-        ((and (symbolp name) (macro-function name))
-         (grovel-docstring-for-arglist name 'function))
-        ((or (functionp name) (fboundp name))
-         (multiple-value-bind (name fndef)
-             (if (functionp name)
-                 (values (function-name name) name)
-                 (values name (fdefinition name)))
-           (typecase fndef
-             (generic-function
-              (clos::generic-function-lambda-list fndef))
-             (compiled-function
-              (grovel-docstring-for-arglist name 'function))
-             (function
-              (let ((fle (function-lambda-expression fndef)))
-                (case (car fle)
-                  (si:lambda-block (caddr fle))
-                  (t               :not-available)))))))
-        (t :not-available)))
+  (multiple-value-bind (arglist foundp)
+      (ext:function-lambda-list name)
+    (if foundp arglist :not-available)))
 
 (defimplementation function-name (f)
   (typecase f
@@ -295,9 +300,8 @@
 (defimplementation describe-symbol-for-emacs (symbol)
   (let ((result '()))
     (dolist (type '(:VARIABLE :FUNCTION :CLASS))
-      (let ((doc (describe-definition symbol type)))
-        (when doc
-          (setf result (list* type doc result)))))
+      (when-let (doc (describe-definition symbol type))
+        (setf result (list* type doc result))))
     result))
 
 (defimplementation describe-definition (name type)
@@ -307,6 +311,7 @@
     (:class (documentation name 'class))
     (t nil)))
 
+
 ;;; Debugging
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -342,47 +347,49 @@
 
 (defimplementation call-with-debugger-hook (hook fun)
   (let ((*debugger-hook* hook)
-        (ext:*invoke-debugger-hook* (make-invoke-debugger-hook hook))
-        (*ihs-base* (ihs-top)))
+        (ext:*invoke-debugger-hook* (make-invoke-debugger-hook hook)))
     (funcall fun)))
 
 (defvar *backtrace* '())
 
-(defun in-swank-package-p (x)
-  (and
-   (symbolp x)
-   (member (symbol-package x)
-           (list #.(find-package :swank)
-                 #.(find-package :swank-backend)
-                 #.(ignore-errors (find-package :swank-mop))
-                 #.(ignore-errors (find-package :swank-loader))))
-   t))
+;;; Commented out; it's not clear this is a good way of doing it. In
+;;; particular because it makes errors stemming from this file harder
+;;; to debug, and given the "young" age of ECL's swank backend, that's
+;;; a bad idea.
 
-(defun is-swank-source-p (name)
-  (setf name (pathname name))
-  (pathname-match-p
-   name
-   (make-pathname :defaults swank-loader::*source-directory*
-                  :name (pathname-name name)
-                  :type (pathname-type name)
-                  :version (pathname-version name))))
+;; (defun in-swank-package-p (x)
+;;   (and
+;;    (symbolp x)
+;;    (member (symbol-package x)
+;;            (list #.(find-package :swank)
+;;                  #.(find-package :swank-backend)
+;;                  #.(ignore-errors (find-package :swank-mop))
+;;                  #.(ignore-errors (find-package :swank-loader))))
+;;    t))
 
-(defun is-ignorable-fun-p (x)
-  (or
-   (in-swank-package-p (frame-name x))
-   (multiple-value-bind (file position)
-       (ignore-errors (si::bc-file (car x)))
-     (declare (ignore position))
-     (if file (is-swank-source-p file)))))
+;; (defun is-swank-source-p (name)
+;;   (setf name (pathname name))
+;;   (pathname-match-p
+;;    name
+;;    (make-pathname :defaults swank-loader::*source-directory*
+;;                   :name (pathname-name name)
+;;                   :type (pathname-type name)
+;;                   :version (pathname-version name))))
+
+;; (defun is-ignorable-fun-p (x)
+;;   (or
+;;    (in-swank-package-p (frame-name x))
+;;    (multiple-value-bind (file position)
+;;        (ignore-errors (si::bc-file (car x)))
+;;      (declare (ignore position))
+;;      (if file (is-swank-source-p file)))))
 
 (defimplementation call-with-debugging-environment (debugger-loop-fn)
   (declare (type function debugger-loop-fn))
-  (let* ((*tpl-commands* si::tpl-commands)
-         (*ihs-top* (ihs-top))
+  (let* ((*ihs-top* (ihs-top))
          (*ihs-current* *ihs-top*)
          (*frs-base* (or (sch-frs-base *frs-top* *ihs-base*) (1+ (frs-top))))
          (*frs-top* (frs-top))
-         (*read-suppress* nil)
          (*tpl-level* (1+ *tpl-level*))
          (*backtrace* (loop for ihs from 0 below *ihs-top*
                             collect (list (si::ihs-fun ihs)
@@ -396,7 +403,7 @@
                         (name (si::frs-tag f)))
                    (unless (si::fixnump name)
                      (push name (third x)))))))
-    (setf *backtrace* (remove-if #'is-ignorable-fun-p (nreverse *backtrace*)))
+    (setf *backtrace* (nreverse *backtrace*))
     (set-break-env)
     (set-current-ihs)
     (let ((*ihs-base* *ihs-top*))
@@ -417,7 +424,8 @@
 (defun function-position (fun)
   (multiple-value-bind (file position)
       (si::bc-file fun)
-    (and file (make-location `(:file ,file) `(:position ,position)))))
+    (when file
+      (make-file-location file position))))
 
 (defun frame-function (frame)
   (let* ((x (first frame))
@@ -466,92 +474,180 @@
        var-id))
 
 (defimplementation disassemble-frame (frame-number)
-  (let ((fun (frame-fun (elt *backtrace* frame-number))))
+  (let ((fun (frame-function (elt *backtrace* frame-number))))
     (disassemble fun)))
 
 (defimplementation eval-in-frame (form frame-number)
   (let ((env (second (elt *backtrace* frame-number))))
     (si:eval-with-env form env)))
 
+(defimplementation gdb-initial-commands ()
+  ;; These signals are used by the GC.
+  #+linux '("handle SIGPWR  noprint nostop"
+            "handle SIGXCPU noprint nostop"))
+
+(defimplementation command-line-args ()
+  (loop for n from 0 below (si:argc) collect (si:argv n)))
+
+
 ;;;; Inspector
 
-(defmethod emacs-inspect ((o t))
-  ; ecl clos support leaves some to be desired
-  (cond
-    ((streamp o)
-     (list*
-      (format nil "~S is an ordinary stream~%" o)
-      (append
-       (list
-        "Open for "
-        (cond
-          ((ignore-errors (interactive-stream-p o)) "Interactive")
-          ((and (input-stream-p o) (output-stream-p o)) "Input and output")
-          ((input-stream-p o) "Input")
-          ((output-stream-p o) "Output"))
-        `(:newline) `(:newline))
-       (label-value-line*
-        ("Element type" (stream-element-type o))
-        ("External format" (stream-external-format o)))
-       (ignore-errors (label-value-line*
-                       ("Broadcast streams" (broadcast-stream-streams o))))
-       (ignore-errors (label-value-line*
-                       ("Concatenated streams" (concatenated-stream-streams o))))
-       (ignore-errors (label-value-line*
-                       ("Echo input stream" (echo-stream-input-stream o))))
-       (ignore-errors (label-value-line*
-                       ("Echo output stream" (echo-stream-output-stream o))))
-       (ignore-errors (label-value-line*
-                       ("Output String" (get-output-stream-string o))))
-       (ignore-errors (label-value-line*
-                       ("Synonym symbol" (synonym-stream-symbol o))))
-       (ignore-errors (label-value-line*
-                       ("Input stream" (two-way-stream-input-stream o))))
-       (ignore-errors (label-value-line*
-                       ("Output stream" (two-way-stream-output-stream o)))))))
-    ((si:instancep o)
-     (let* ((cl (si:instance-class o))
-            (slots (clos:class-slots cl)))
-       (list* (format nil "~S is an instance of class ~A~%"
-                      o (clos::class-name cl))
-               (loop for x in slots append
-                    (let* ((name (clos:slot-definition-name x))
-                           (value (clos::slot-value o name)))
-                      (list
-                       (format nil "~S: " name)
-                       `(:value ,value)
-                       `(:newline)))))))))
+;;; FIXME: Would be nice if it was possible to inspect objects
+;;; implemented in C.
 
+
 ;;;; Definitions
 
+(defvar +TAGS+ (namestring (translate-logical-pathname #P"SYS:TAGS")))
+
+(defun make-file-location (file file-position)
+  ;; File positions in CL start at 0, but Emacs' buffer positions
+  ;; start at 1. We specify (:ALIGN T) because the positions comming
+  ;; from ECL point at right after the toplevel form appearing before
+  ;; the actual target toplevel form; (:ALIGN T) will DTRT in that case.
+  (make-location `(:file ,(namestring (translate-logical-pathname file)))
+                 `(:position ,(1+ file-position))
+                 `(:align t)))
+
+(defun make-buffer-location (buffer-name start-position &optional (offset 0))
+  (make-location `(:buffer ,buffer-name)
+                 `(:offset ,start-position ,offset)
+                 `(:align t)))
+
+(defun make-TAGS-location (&rest tags)
+  (make-location `(:etags-file ,+TAGS+)
+                 `(:tag ,@tags)))
+
 (defimplementation find-definitions (name)
-  (if (fboundp name)
-      (let ((tmp (find-source-location (symbol-function name))))
-        `(((defun ,name) ,tmp)))))
+  (let ((annotations (ext:get-annotation name 'si::location :all)))
+    (cond (annotations
+           (loop for annotation in annotations
+                 collect (destructuring-bind (dspec file . pos) annotation
+                           `(,dspec ,(make-file-location file pos)))))
+          (t
+           (mapcan #'(lambda (type) (find-definitions-by-type name type))
+                   (classify-definition-name name))))))
 
-(defimplementation find-source-location (obj)
-  (or
-   (typecase obj
+(defun classify-definition-name (name)
+  (let ((types '()))
+    (when (fboundp name)
+      (cond ((special-operator-p name)
+             (push :special-operator types))
+            ((macro-function name)
+             (push :macro types))
+            ((typep (fdefinition name) 'generic-function)
+             (push :generic-function types))
+            ((si:mangle-name name t)
+             (push :c-function types))
+            (t
+             (push :lisp-function types))))
+    (when (boundp name)
+      (cond ((constantp name)
+             (push :constant types))
+            (t
+             (push :global-variable types))))
+    types))
+
+(defun find-definitions-by-type (name type)
+  (ecase type
+    (:lisp-function
+     (when-let (loc (source-location (fdefinition name)))
+       (list `((defun ,name) ,loc))))
+    (:c-function
+     (when-let (loc (source-location (fdefinition name)))
+       (list `((c-source ,name) ,loc))))
+    (:generic-function
+     (loop for method in (clos:generic-function-methods (fdefinition name))
+           for specs = (clos:method-specializers method)
+           for loc   = (source-location method)
+           when loc
+             collect `((defmethod ,name ,specs) ,loc)))
+    (:macro
+     (when-let (loc (source-location (macro-function name)))
+       (list `((defmacro ,name) ,loc))))
+    (:constant
+     (when-let (loc (source-location name))
+       (list `((defconstant ,name) ,loc))))
+    (:global-variable
+     (when-let (loc (source-location name))
+       (list `((defvar ,name) ,loc))))
+    (:special-operator)))
+
+;;; FIXME: There ought to be a better way.
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun c-function-name-p (name)
+    (and (symbolp name) (si:mangle-name name t) t))
+  (defun c-function-p (object)
+    (and (functionp object)
+         (let ((fn-name (function-name object)))
+           (and fn-name (c-function-name-p fn-name))))))
+
+(deftype c-function ()
+  `(satisfies c-function-p))
+
+(defun assert-source-directory ()
+  (unless (probe-file #P"SRC:")
+    (error "ECL's source directory ~A does not exist. ~
+            You can specify a different location via the environment ~
+            variable `ECLSRCDIR'."
+           (namestring (translate-logical-pathname #P"SYS:"))))) 
+
+(defun assert-TAGS-file ()
+  (unless (probe-file +TAGS+)
+    (error "No TAGS file ~A found. It should have been installed with ECL."
+           +TAGS+)))
+
+(defun package-names (package)
+  (cons (package-name package) (package-nicknames package)))
+
+(defun source-location (object)
+  (converting-errors-to-error-location
+   (typecase object
+     (c-function
+      (assert-source-directory)
+      (assert-TAGS-file)
+      (let ((lisp-name (function-name object)))
+        (assert lisp-name)
+        (multiple-value-bind (flag c-name) (si:mangle-name lisp-name t)
+          (assert flag)
+          ;; In ECL's code base sometimes the mangled name is used
+          ;; directly, sometimes ECL's DPP magic of @SI::SYMBOL or
+          ;; @EXT::SYMBOL is used. We cannot predict here, so we just
+          ;; provide several candidates.
+          (apply #'make-TAGS-location
+                 c-name
+                 (loop with s = (symbol-name lisp-name)
+                       for p in (package-names (symbol-package lisp-name))
+                       collect (format nil "~A::~A" p s)
+                       collect (format nil "~(~A::~A~)" p s))))))
      (function
-      (multiple-value-bind (file pos) (ignore-errors (si::bc-file obj))
-        (if (and file pos) 
-            (make-location
-              `(:file ,(namestring file))
-              `(:position ,pos)
-              `(:snippet
-                ,(with-open-file (s file)
-                   (file-position s pos)
-                   (skip-comments-and-whitespace s)
-                   (read-snippet s))))))))
-   `(:error ,(format nil "Source definition of ~S not found" obj))))
+      (multiple-value-bind (file pos) (ext:compiled-function-file object)
+        (cond ((not file)
+               (return-from source-location nil))
+              ((tmpfile-to-buffer file)
+               (make-buffer-location (tmpfile-to-buffer file) pos))
+              (t
+               (assert (probe-file file))
+               (assert (not (minusp pos)))
+               (make-file-location file pos)))))
+     (method
+      ;; FIXME: This will always return NIL at the moment; ECL does not
+      ;; store debug information for methods yet.
+      (source-location (clos:method-function object)))
+     ((member nil t)
+      (multiple-value-bind (flag c-name) (si:mangle-name object)
+        (assert flag)
+        (make-TAGS-location c-name))))))
 
+(defimplementation find-source-location (object)
+  (or (source-location object)
+      (make-error-location "Source definition of ~S not found." object)))
+
+
 ;;;; Profiling
 
 #+profile
 (progn
-
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (require 'profile))
 
 (defimplementation profile (fname)
   (when fname (eval `(profile:profile ,fname))))
@@ -576,8 +672,9 @@
 (defimplementation profile-package (package callers methods)
   (declare (ignore callers methods))
   (eval `(profile:profile ,(package-name (find-package package)))))
-)                                       ; progn
+) ; #+profile (progn ...
 
+
 ;;;; Threads
 
 #+threads
@@ -611,8 +708,8 @@
 
   (defimplementation find-thread (id)
     (mp:with-lock (*thread-id-map-lock*)
-      (let* ((thread-pointer (gethash id *thread-id-map*))
-             (thread (and thread-pointer (si:weak-pointer-value thread-pointer))))
+      (let* ((thread-ptr (gethash id *thread-id-map*))
+             (thread (and thread-ptr (si:weak-pointer-value thread-ptr))))
         (unless thread
           (remhash id *thread-id-map*))
         thread)))
