@@ -149,7 +149,7 @@
 (defun find-topframe ()
   (let ((magic-symbol (intern (symbol-name :swank-debugger-hook)
                               (find-package :swank)))
-        (top-frame (excl::int-newest-frame)))
+        (top-frame (excl::int-newest-frame (excl::current-thread))))
     (loop for frame = top-frame then (next-frame frame)
           for name  = (debugger:frame-name frame)
           for i from 0
@@ -536,7 +536,7 @@
   (cond
     ((and (listp fspec)
           (eql (car fspec) :top-level-form))
-     (destructuring-bind (top-level-form file &optional position) fspec 
+     (destructuring-bind (top-level-form file &optional (position 0)) fspec 
        (declare (ignore top-level-form))
        `((,fspec
           ,(buffer-or-file-location file position)))))
