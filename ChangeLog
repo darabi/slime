@@ -1,3 +1,34 @@
+2010-07-21  Stas Boukarev  <stassats@gmail.com>
+
+	* swank-sbcl.lisp (quit-lisp): Use sb-thread:terminate-thread
+	instead of sb-ext:quit :recklessly-p t. This way
+	sb-ext:*exit-hooks* will be run.
+	Reported by Lorenz Mösenlechner.
+
+2010-07-06  Helmut Eller  <heller@common-lisp.net>
+
+	Find definition for (%primitive NAME ...)
+
+	* swank-cmucl.lisp (template-definitions, primitive-definitions):
+	New functions.
+	(find-definitions): Use them.
+
+2010-06-22  Helmut Eller  <heller@common-lisp.net>
+
+	* swank-loader.lisp (*architecture-features*): ECL uses :x86_64.
+
+2010-06-18  Helmut Eller  <heller@common-lisp.net>
+
+	* slime.el (slime-current-tlf-number,slime-current-form-path):
+	Moved to contrib/slime-parse.el.
+
+2010-06-18  Helmut Eller  <heller@common-lisp.net>
+
+	Don't use goto-line.
+
+	* slime.el (slime-goto-line): New function as replacement without
+	goto-line's cruft that we don't want.
+
 2010-06-04  Helmut Eller  <heller@common-lisp.net>
 
 	* slime.el, swank.lisp: #'(lambda -> (lambda
