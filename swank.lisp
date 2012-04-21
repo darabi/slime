@@ -65,7 +65,8 @@
            #:set-default-directory
            #:quit-lisp
            #:eval-for-emacs
-           #:eval-in-emacs))
+           #:eval-in-emacs
+           #:y-or-n-p-in-emacs))
 
 (in-package :swank)
 
@@ -2259,6 +2260,11 @@ Return the full package-name and the string to use in the prompt."
            (funcall *send-repl-results-function* values))))))
   nil)
 
+(defslimefun clear-repl-variables ()
+  (let ((variables '(*** ** * /// // / +++ ++ +)))
+    (loop for variable in variables
+          do (setf (symbol-value variable) nil))))
+
 (defun track-package (fun)
   (let ((p *package*))
     (unwind-protect (funcall fun)
@@ -3044,8 +3050,12 @@ the filename of the module (or nil if the file doesn't exist).")
                       ((not pname) (guess-buffer-package package))
                       (t (guess-package pname))))
 	   (test (lambda (sym) (prefix-match-p name (symbol-name sym))))
-	   (syms (and pkg (matching-symbols pkg extern test))))
-      (format-completion-set (mapcar #'unparse-symbol syms) intern pname))))
+	   (syms (and pkg (matching-symbols pkg extern test)))
+           (strings (loop for sym in syms
+                          for str = (unparse-symbol sym)
+                          when (prefix-match-p name str) ; remove |Foo|
+                          collect str)))
+      (format-completion-set strings intern pname))))
 
 (defun matching-symbols (package external test)
   (let ((test (if external 
@@ -3262,6 +3272,17 @@ Include the nicknames if NICKNAMES is true."
 (defslimefun undefine-function (fname-string)
   (let ((fname (from-string fname-string)))
     (format nil "~S" (fmakunbound fname))))
+
+(defslimefun unintern-symbol (name package)
+  (let ((pkg (guess-package package)))
+    (cond ((not pkg) (format nil "No such package: ~s" package))
+          (t 
+           (multiple-value-bind (sym found) (parse-symbol name pkg)
+             (case found
+               ((nil) (format nil "~s not in package ~s" name package))
+               (t
+                (unintern sym pkg)
+                (format nil "Uninterned symbol: ~s" sym))))))))
 
 
 ;;;; Profiling
