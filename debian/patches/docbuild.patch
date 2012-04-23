@@ -1,8 +1,16 @@
 Index: slime/doc/Makefile
 ===================================================================
---- slime.orig/doc/Makefile	2010-02-20 18:55:59.000000000 +0100
-+++ slime/doc/Makefile	2010-02-20 18:56:07.000000000 +0100
-@@ -16,7 +16,7 @@
+--- slime.orig/doc/Makefile	2012-04-24 21:18:46.000000001 +0200
++++ slime/doc/Makefile	2012-04-24 21:23:47.000000001 +0200
+@@ -7,6 +7,7 @@
+ # installed their emacs from source probably have a GCS-ish file
+ # hierarchy.
+ infodir=/usr/local/info
++HOME=$(CURDIR)
+ 
+ # What command to use to install info file(s)
+ INSTALL_CMD=install -m 644
+@@ -16,10 +17,10 @@
  
  TEXI = slime.texi contributors.texi
  
@@ -10,18 +18,24 @@ Index: slime/doc/Makefile
 +all: slime.ps slime.info slime.html slime.pdf html/index.html slime-refcard.pdf
  
  slime.dvi: $(TEXI)
- 	texi2dvi slime.texi
-@@ -45,6 +45,9 @@
- slime.pdf: $(TEXI)
- 	texi2pdf $<
+-	texi2dvi slime.texi
++	HOME=$(HOME) texi2dvi slime.texi
  
-+slime-refcard.pdf: slime-refcard.tex
-+	texi2pdf $<	
+ slime.ps: slime.dvi
+ 	dvips -o $@ $<
+@@ -43,7 +44,10 @@
+ 	ssh $(CLUSER)@common-lisp.net "cd $(DOCDIR); tar -zxf html.tgz"
+ 
+ slime.pdf: $(TEXI)
+-	texi2pdf $<
++	HOME=$(HOME) texi2pdf $<
 +
++slime-refcard.pdf: slime-refcard.tex
++	HOME=$(HOME) texi2pdf $<	
+ 
  install: install-info
  
- uninstall: uninstall-info
-@@ -99,10 +102,11 @@
+@@ -99,10 +103,11 @@
  		install-info --infodir="$(infodir)" --remove "$(infodir)/$(infofiles)" || :; fi
  	rm -f $(infodir)/$(infofiles)
  
@@ -37,4 +51,4 @@ Index: slime/doc/Makefile
 +	rm -f slime.{aux,cp,cps,fn,fns,ky,kys,log,pg,tmp,toc,tp,vr,vrs}
 +	rm -f slime.{info,pdf,dvi,ps,html,kys,fns,vrs}
 +	rm -f slime-refcard.{aux,log,pdf}
-+	rm -rf html{,.tgz}
++	rm -rf html{,.tgz} .texmf-var

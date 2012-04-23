@@ -1,3 +1,10 @@
+slime (1:20120420-2) unstable; urgency=low
+
+  * Set HOME to the current directory before running texi* commands in
+    doc/Makefile; closes: #666648.
+
+ -- Milan Zamazal <pdm@debian.org>  Mon, 23 Apr 2012 22:03:50 +0200
+
 slime (1:20120420-1) unstable; urgency=low
 
   * New upstream.
