@@ -1,3 +1,9 @@
+slime (1:20120525-1) unstable; urgency=low
+
+  * New upstream.
+
+ -- Milan Zamazal <pdm@debian.org>  Mon, 04 Jun 2012 19:57:35 +0200
+
 slime (1:20120420-2) unstable; urgency=low
 
   * Set HOME to the current directory before running texi* commands in
