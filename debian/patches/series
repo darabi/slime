@@ -4,3 +4,4 @@ noxref.patch
 implementations.patch
 docbuild.patch
 paths.patch
+emacs24.patch
