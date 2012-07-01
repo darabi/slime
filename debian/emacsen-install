@@ -8,7 +8,7 @@
 FLAVOR=$1
 PACKAGE=slime
 
-if [ "${FLAVOR}" != emacs23 ] && [ "${FLAVOR}" != emacs22 ] && [ "${FLAVOR}" != xemacs21 ] && [ "${FLAVOR}" != emacs-snapshot ]; then
+if [ "${FLAVOR}" != emacs24 ] && [ "${FLAVOR}" != emacs23 ] && [ "${FLAVOR}" != emacs22 ] && [ "${FLAVOR}" != xemacs21 ] && [ "${FLAVOR}" != emacs-snapshot ]; then
   exit 0;
 fi
 
