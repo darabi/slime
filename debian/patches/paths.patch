@@ -1,20 +1,20 @@
 Index: slime/slime.el
 ===================================================================
---- slime.orig/slime.el	2012-04-21 21:47:22.000000001 +0200
-+++ slime/slime.el	2012-04-21 21:47:36.000000001 +0200
+--- slime.orig/slime.el	2013-04-18 22:55:05.000000001 +0200
++++ slime/slime.el	2013-04-18 22:55:58.000000001 +0200
 @@ -119,7 +119,7 @@
      "Return the datestring of the latest entry in the ChangeLog file.
  Return nil if the ChangeLog file cannot be found."
      (interactive "p")
--    (let ((changelog (concat slime-path "ChangeLog"))
+-    (let ((changelog (expand-file-name "ChangeLog" slime-path))
 +    (let ((changelog "/usr/share/doc/slime/changelog")
            (date nil))
        (when (file-exists-p changelog)
          (with-temp-buffer 
 Index: slime/swank-loader.lisp
 ===================================================================
---- slime.orig/swank-loader.lisp	2012-04-21 21:47:09.000000001 +0200
-+++ slime/swank-loader.lisp	2012-04-21 21:47:36.000000001 +0200
+--- slime.orig/swank-loader.lisp	2013-04-18 22:55:05.000000001 +0200
++++ slime/swank-loader.lisp	2013-04-18 22:55:17.000000001 +0200
 @@ -17,6 +17,10 @@
  ;;   (setq swank-loader::*fasl-directory* "/tmp/fasl/")
  ;;   (swank-loader:init)
@@ -26,7 +26,7 @@ Index: slime/swank-loader.lisp
  (cl:defpackage :swank-loader
    (:use :cl)
    (:export :init
-@@ -122,7 +126,7 @@
+@@ -123,7 +127,7 @@
  (defun slime-version-string ()
    "Return a string identifying the SLIME version.
  Return nil if nothing appropriate is available."
@@ -35,7 +35,7 @@ Index: slime/swank-loader.lisp
                       :if-does-not-exist nil)
      (and s (symbol-name (read s)))))
  
-@@ -139,10 +143,11 @@
+@@ -140,10 +144,11 @@
  
  (defun binary-pathname (src-pathname binary-dir)
    "Return the pathname where SRC-PATHNAME's binary should be compiled."

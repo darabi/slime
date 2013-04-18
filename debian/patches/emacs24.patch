@@ -1,11 +1,11 @@
 Index: slime/slime.el
 ===================================================================
---- slime.orig/slime.el	2012-07-01 20:59:26.000000001 +0200
-+++ slime/slime.el	2012-07-01 21:00:50.000000001 +0200
-@@ -9380,7 +9380,7 @@
+--- slime.orig/slime.el	2013-04-18 22:55:58.000000001 +0200
++++ slime/slime.el	2013-04-18 22:57:37.000000001 +0200
+@@ -9466,7 +9466,7 @@
  (run-hooks 'slime-load-hook)
  
- ;; Local Variables: 
+ ;; Local Variables:
 -;; lexical-binding: t
 +;; lexical-binding: nil
  ;; outline-regexp: ";;;;+"
