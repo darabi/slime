@@ -1,0 +1,13 @@
+Index: slime/doc/slime.texi
+===================================================================
+--- slime.orig/doc/slime.texi	2013-08-26 23:01:42.000000001 +0200
++++ slime/doc/slime.texi	2013-08-26 23:02:07.000000001 +0200
+@@ -533,7 +533,7 @@
+ and sends the result of this function to Lisp's standard input.  As
+ default, @code{slime-init-command} is used.  An example is shown in
+ @ref{init-example,,Loading Swank faster}.
+-@itemx INIT-FUNCTION
++@item INIT-FUNCTION
+ should be a function which takes no arguments.  It is called after 
+ the connection is established. (See also @ref{slime-connected-hook}.)
+ @item ENV
