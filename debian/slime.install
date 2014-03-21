@@ -1,2 +1,3 @@
 *.el usr/share/emacs/site-lisp/slime/
 contrib/*.el usr/share/emacs/site-lisp/slime/contrib
+lib/*.el usr/share/emacs/site-lisp/slime/lib

@@ -33,30 +33,22 @@ if test -x /usr/sbin/install-info-altdir; then
 fi
 
 # in case of a failed installation .el symlinks are left behind, remove them
-if [ -d "${ELCDIR}" ] ; then
-  if [ "${ELCDIR}" = "" ] ; then
-    echo ELCDIR is empty, emergency stop
-    exit 1
-  else
-    # we use find to protect against 'bad' filenames
-    find "${ELCDIR}" -maxdepth 1 -name "*.el" -print0 | \
-      xargs -0 rm || true
-    rm -f "${ELCDIR}/ChangeLog"
+for subdir in '' /contrib /lib; do
+  if [ -d "${ELCDIR}$subdir" ] ; then
+    if [ "${ELCDIR}" = "" ] ; then
+      echo ELCDIR is empty, emergency stop
+      exit 1
+    else
+      # we use find to protect against 'bad' filenames
+      find "${ELCDIR}$subdir" -maxdepth 1 -name "*.el" -print0 | \
+        xargs -0 rm || true
+      rm -f "${ELCDIR}$subdir/ChangeLog"
+    fi
   fi
-fi
-
-if [ -d "${ELCDIR}/contrib" ] ; then
-  if [ "${ELCDIR}" = "" ] ; then
-    echo ELCDIR is empty, emergency stop
-    exit 1
-  else
-    # we use find to protect against 'bad' filenames
-    find "${ELCDIR}/contrib" -maxdepth 1 -name "*.el" -print0 | \
-      xargs -0 rm || true
-  fi
-fi
+done
 
 install -m 755 -d ${ELCDIR}
+install -m 755 -d ${ELCDIR}/lib
 if [ "${FLAVOR}" != xemacs21 ]; then
   install -m 755 -d ${ELCDIR}/contrib
 fi
@@ -68,6 +60,9 @@ if [ "${FLAVOR}" != xemacs21 ]; then
   cd ${ELDIR}/contrib
   CFILES=`echo *.el`
   cp ${CFILES} ${ELCDIR}/contrib/
+  cd ${ELDIR}/lib
+  LFILES=`echo *.el`
+  cp ${LFILES} ${ELCDIR}/lib/
 fi
 
 cd ${ELCDIR}
@@ -77,9 +72,12 @@ cat << EOF > path.el
 EOF
 if [ "${FLAVOR}" != xemacs21 ]; then
   ${FLAVOR} ${FLAGS} `for i in ${FILES} ; do echo -l ${ELCDIR}/$i ; done` \
+                     `for i in ${LFILES} ; do echo -l ${ELCDIR}/lib/$i ; done` \
                      `for i in ${CFILES} ; do echo -l ${ELCDIR}/contrib/$i ; done` \
                       -f batch-byte-compile \
-                      ${FILES} `for i in ${CFILES} ; do echo contrib/$i ; done`
+                      ${FILES} \
+                      `for i in ${LFILES} ; do echo lib/$i ; done` \
+                      `for i in ${CFILES} ; do echo contrib/$i ; done`
 fi
 rm -f *.el path.el
 
@@ -97,10 +95,17 @@ done
 
 if [ "${FLAVOR}" != xemacs21 ]; then
   cd ${ELCDIR}/contrib
-  for FILE in $CFILES ; do 
+  for FILE in $CFILES; do 
     if ! [ -e $FILE ];  then
     ## note that these will not be 'relative' symlinks.
       ln -s ${ELDIR}/contrib/$FILE .
+    fi
+  done
+  cd ${ELCDIR}/lib
+  for FILE in $LFILES; do 
+    if ! [ -e $FILE ];  then
+    ## note that these will not be 'relative' symlinks.
+      ln -s ${ELDIR}/lib/$FILE .
     fi
   done
 fi
