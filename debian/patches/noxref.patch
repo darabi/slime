@@ -1,8 +1,8 @@
 Index: slime/swank-clisp.lisp
 ===================================================================
---- slime.orig/swank-clisp.lisp	2013-04-18 22:58:08.000000001 +0200
-+++ slime/swank-clisp.lisp	2013-04-18 22:58:12.000000001 +0200
-@@ -697,6 +697,7 @@
+--- slime.orig/swank-clisp.lisp	2014-03-21 22:03:24.000000001 +0100
++++ slime/swank-clisp.lisp	2014-03-21 22:31:39.000000001 +0100
+@@ -699,6 +699,7 @@
  
  ;;;; Portable XREF from the CMU AI repository.
  
@@ -10,7 +10,7 @@ Index: slime/swank-clisp.lisp
  (setq pxref::*handle-package-forms* '(cl:in-package))
  
  (defmacro defxref (name function)
-@@ -709,6 +710,7 @@
+@@ -711,6 +712,7 @@
  (defxref who-sets       pxref:list-setters)
  (defxref list-callers   pxref:list-callers)
  (defxref list-callees   pxref:list-callees)
@@ -20,8 +20,8 @@ Index: slime/swank-clisp.lisp
    (let ((xrefs '()))
 Index: slime/swank-loader.lisp
 ===================================================================
---- slime.orig/swank-loader.lisp	2013-04-18 22:58:08.000000001 +0200
-+++ slime/swank-loader.lisp	2013-04-18 22:58:12.000000001 +0200
+--- slime.orig/swank-loader.lisp	2014-03-21 22:03:24.000000001 +0100
++++ slime/swank-loader.lisp	2014-03-21 22:31:39.000000001 +0100
 @@ -39,7 +39,7 @@
    #+clozure '(metering swank-ccl swank-gray)
    #+lispworks '(swank-lispworks swank-gray)

@@ -1,8 +1,8 @@
 Index: slime/slime.el
 ===================================================================
---- slime.orig/slime.el	2013-04-18 22:58:30.000000001 +0200
-+++ slime/slime.el	2013-04-18 22:58:33.000000001 +0200
-@@ -133,6 +133,15 @@
+--- slime.orig/slime.el	2014-03-21 22:27:52.000000001 +0100
++++ slime/slime.el	2014-03-21 22:31:49.000000001 +0100
+@@ -146,6 +146,15 @@
  (defvar slime-protocol-version nil)
  (setq slime-protocol-version (slime-changelog-date))
  
@@ -18,12 +18,12 @@ Index: slime/slime.el
  
  ;;;; Customize groups
  ;;
-@@ -1057,7 +1066,7 @@
- (defvar inferior-lisp-program "lisp" 
+@@ -1074,7 +1083,7 @@
+ (defvar inferior-lisp-program "lisp"
    "*Program name for invoking an inferior Lisp with for Inferior Lisp mode.")
  
 -(defvar slime-lisp-implementations nil
 +(defvar slime-lisp-implementations (slime-gather-lisp-implementations)
    "*A list of known Lisp implementations.
- The list should have the form: 
+ The list should have the form:
    ((NAME (PROGRAM PROGRAM-ARGS...) &key KEYWORD-ARGS) ...)
