@@ -1,6 +1,5 @@
-HACKING 
+CONTRIBUTING.md
 NEWS 
 PROBLEMS 
-README 
-contrib/README
-contrib/ChangeLog
+README.md
+contrib/README.md

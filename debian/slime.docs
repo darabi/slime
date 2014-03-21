@@ -1,10 +1,9 @@
-HACKING 
+CONTRIBUTING.md 
 NEWS 
 PROBLEMS 
-README 
+README.md
 doc/slime.ps 
 doc/slime.pdf
 doc/slime-refcard.pdf
 debian/old-changelog
-contrib/README
-contrib/ChangeLog
+contrib/README.md
