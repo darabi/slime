@@ -2,8 +2,9 @@ slime (2:2.4-1) unstable; urgency=low
 
   * New upstream.
   * Standards 3.9.5 (no real change).
+  * Depend on recent Emacs.
 
- -- Milan Zamazal <pdm@debian.org>  Fri, 21 Mar 2014 22:04:00 +0100
+ -- Milan Zamazal <pdm@debian.org>  Sat, 22 Mar 2014 13:35:01 +0100
 
 slime (1:20130626-1) unstable; urgency=low
 
