@@ -1,3 +1,9 @@
+slime (2:2.4-2) unstable; urgency=low
+
+  * emacs24-lucid and emacs24-nox added to dependencies.
+
+ -- Milan Zamazal <pdm@debian.org>  Sat, 29 Mar 2014 23:00:55 +0100
+
 slime (2:2.4-1) unstable; urgency=low
 
   * New upstream.
