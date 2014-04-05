@@ -1,6 +1,7 @@
 slime (2:2.5-1) unstable; urgency=low
 
   * New upstream.
+  * Don't crash on nil in load-path; closes: #742426.
 
  -- Milan Zamazal <pdm@debian.org>  Sat, 05 Apr 2014 17:03:12 +0200
 

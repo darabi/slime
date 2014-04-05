@@ -1,0 +1,13 @@
+Index: slime/lib/cl-lib.el
+===================================================================
+--- slime.orig/lib/cl-lib.el	2014-03-21 22:03:23.000000001 +0100
++++ slime/lib/cl-lib.el	2014-04-05 19:03:16.000000001 +0200
+@@ -58,7 +58,7 @@
+           load-path-dir)
+       ;; Find the problematic directory from load-path.
+       (dolist (dir load-path)
+-        (if (equal loaddir (expand-file-name (file-name-as-directory dir)))
++        (if (and dir (equal loaddir (expand-file-name (file-name-as-directory dir))))
+             (setq load-path-dir dir)))
+       (when load-path-dir
+         ;; (message "Let's move the offending dir to the end")
