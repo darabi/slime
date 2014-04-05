@@ -1,8 +1,8 @@
 Index: slime/slime.el
 ===================================================================
---- slime.orig/slime.el	2014-03-21 22:31:49.000000001 +0100
-+++ slime/slime.el	2014-03-21 22:32:01.000000001 +0100
-@@ -132,7 +132,7 @@
+--- slime.orig/slime.el	2014-04-05 17:03:47.000000001 +0200
++++ slime/slime.el	2014-04-05 17:03:47.000000001 +0200
+@@ -131,7 +131,7 @@
      "Return the datestring of the latest entry in the ChangeLog file.
  Return nil if the ChangeLog file cannot be found."
      (interactive "p")
@@ -13,8 +13,8 @@ Index: slime/slime.el
          (with-temp-buffer
 Index: slime/swank-loader.lisp
 ===================================================================
---- slime.orig/swank-loader.lisp	2014-03-21 22:31:39.000000001 +0100
-+++ slime/swank-loader.lisp	2014-03-21 22:32:01.000000001 +0100
+--- slime.orig/swank-loader.lisp	2014-04-05 17:03:47.000000001 +0200
++++ slime/swank-loader.lisp	2014-04-05 17:03:47.000000001 +0200
 @@ -17,6 +17,10 @@
  ;;   (setq swank-loader::*fasl-directory* "/tmp/fasl/")
  ;;   (swank-loader:init)

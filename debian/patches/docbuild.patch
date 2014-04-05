@@ -1,7 +1,7 @@
 Index: slime/doc/Makefile
 ===================================================================
---- slime.orig/doc/Makefile	2014-03-21 22:03:23.000000001 +0100
-+++ slime/doc/Makefile	2014-03-21 22:31:57.000000001 +0100
+--- slime.orig/doc/Makefile	2014-04-05 17:03:59.000000001 +0200
++++ slime/doc/Makefile	2014-04-05 17:04:20.000000001 +0200
 @@ -7,6 +7,7 @@
  # installed their emacs from source probably have a GCS-ish file
  # hierarchy.
@@ -35,7 +35,7 @@ Index: slime/doc/Makefile
  
  install: install-info
  
-@@ -109,10 +113,11 @@
+@@ -102,10 +106,11 @@
  		install-info --infodir="$(infodir)" --remove "$(infodir)/$(infofiles)" || :; fi
  	rm -f $(infodir)/$(infofiles)
  
