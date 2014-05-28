@@ -3,7 +3,7 @@
 ;; URL: https://github.com/slime/slime
 ;; Package-Requires: ((cl-lib "0.5"))
 ;; Keywords: languages, lisp, slime
-;; Version: 2.5
+;; Version: 2.6
 
 ;;;; License
 ;;     Copyright (C) 2003  Eric Marsden, Luke Gorrie, Helmut Eller
@@ -1239,11 +1239,11 @@ See `slime-start'."
     ;; Return a single form to avoid problems with buffered input.
     (format "%S\n\n"
             `(progn
-               (load ,(expand-file-name loader)
+               (load ,(slime-to-lisp-filename (expand-file-name loader))
                      :verbose t)
                (funcall (read-from-string "swank-loader:init"))
                (funcall (read-from-string "swank:start-server")
-                        ,port-filename)))))
+                        ,(slime-to-lisp-filename port-filename))))))
 
 (defun slime-swank-port-file ()
   "Filename where the SWANK server writes its TCP port number."
@@ -4069,7 +4069,7 @@ inserted in the current buffer."
   (slime-message "%s" value))
 
 (defun slime-eval-with-transcript (form)
-  "Eval FROM in Lisp.  Display output, if any."
+  "Eval FORM in Lisp.  Display output, if any."
   (run-hooks 'slime-transcript-start-hook)
   (slime-rex () (form)
     ((:ok value)
@@ -4395,7 +4395,7 @@ If PACKAGE is NIL, then search in all packages."
    `(swank:documentation-symbol ,symbol-name)))
 
 (defun slime-describe-function (symbol-name)
-  (interactive (list (slime-read-symbol-name "Describe symbol: ")))
+  (interactive (list (slime-read-symbol-name "Describe symbol's function: ")))
   (when (not symbol-name)
     (error "No symbol given"))
   (slime-eval-describe `(swank:describe-function ,symbol-name)))
@@ -5348,8 +5348,14 @@ If LEVEL isn't the same as in the buffer reinitialize the buffer."
       (cond (stepping
              (setq sldb-level nil)
              (run-with-timer 0.4 nil 'sldb-close-step-buffer sldb))
+            ((not (eq sldb (window-buffer (selected-window))))
+             ;; A different window selection means an indirect,
+             ;; non-interactive exit, we just kill the sldb buffer.
+             (kill-buffer))
             (t
-             ;; FIXME: remove when dropping Emacs23 support
+             ;; An interactive exit should restore configuration per
+             ;; `quit-window's protocol. FIXME: remove
+             ;; `previous-window' hack when dropping Emacs23 support
              (let ((previous-window (window-parameter (selected-window)
                                                       'sldb-restore)))
                (quit-window t)
@@ -7232,9 +7238,17 @@ keys."
     (sequence (> (length seq) n))))
 
 (defun slime-trim-whitespace (str)
-  (save-match-data
-    (string-match "^\\s-*\\(.*?\\)\\s-*$" str)
-    (match-string 1 str)))
+  (let ((start (cl-position-if-not (lambda (x)
+                                     (memq x '(?\t ?\n ?\s ?\r)))
+                                   str))
+        
+        (end (cl-position-if-not (lambda (x)
+                                   (memq x '(?\t ?\n ?\s ?\r)))
+                                 str
+                                 :from-end t)))
+    (if start
+        (substring str start (1+ end))
+        "")))
 
 ;;;;; Buffer related
 
