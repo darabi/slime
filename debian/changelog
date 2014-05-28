@@ -1,3 +1,9 @@
+slime (2:2.6-1) unstable; urgency=low
+
+  * New upstream.
+
+ -- Milan Zamazal <pdm@debian.org>  Wed, 28 May 2014 20:55:46 +0200
+
 slime (2:2.5-1) unstable; urgency=low
 
   * New upstream.
