@@ -87,10 +87,11 @@ Exits Emacs when finished. The exit code is the number of failed tests."
             (let ((file-name (or load-file-name
                                  byte-compile-current-file)))
               (if (and file-name
-                       (string-match "contrib/test/slime-\\(.*\\)\.elc?$" file-name))
+                       (string-match "contrib/test/slime-\\(.*\\)\.elc?$"
+				     file-name))
                   (list 'contrib (intern (match-string 1 file-name)))
                 '(core)))))
-  
+
   (defmacro define-slime-ert-test (name &rest args)
     "Like `ert-deftest', but set tags automatically.
 Also don't error if `ert.el' is missing."
@@ -400,6 +401,58 @@ after quitting Slime's temp buffer."
           (slime-buffer-narrowed-p)))
       ))
   (slime-check-top-level))
+
+(defun slime-test--display-region-eval-arg (line window-height)
+  (cl-etypecase line
+    (number line)
+    (cons (destructure-case line
+	    ((+h line)
+	     (+ (slime-test--display-region-eval-arg line window-height)
+		window-height))
+	    ((-h line)
+	     (- (slime-test--display-region-eval-arg line window-height)
+		window-height))))))
+
+(defun slime-test--display-region-line-to-position (line window-height)
+  (let ((line (slime-test--display-region-eval-arg line window-height)))
+    (save-excursion
+      (goto-char (point-min))
+      (forward-line (1- line))
+      (line-beginning-position))))
+
+(def-slime-test display-region
+    (start end pos window-start expected-window-start expected-point)
+    "Test `slime-display-region'."
+    ;; numbers are actually lines numbers
+    '(;; region visible, point in region
+      (2 4 3 1  1 3)
+      ;; region visible, point visible but ouside region
+      (2 4 5 1  1 5)
+      ;; end not visible, point at start
+      (2 (+h 2) 2 1  2 2)
+      ;; start not visible, point at start
+      ((+h 2) (+h 500) (+h 2) 1  (+h 2) (+h 2))
+      ;; start not visible, point after end
+      ((+h 2) (+h 500) (+h 6) 1  (+h 2) (+h 4))
+      ;; end - start should be visible, point after end
+      ((+h 2) (+h 7) (+h 10) 1  (-h (+h 8)) (+h 4)))
+  (when noninteractive
+    (slime-skip-test "Can't test slime-display-region in batch mode"))
+  (with-temp-buffer
+    (dotimes (i 1000)
+      (insert (format "%09d\n" i)))
+    (let* ((win (display-buffer (current-buffer)))
+	   (wh (window-text-height win)))
+      (cl-macrolet ((l2p (l)
+			 `(slime-test--display-region-line-to-position ,l wh)))
+	(select-window win)
+	(goto-char (l2p pos))
+	(set-window-start win (l2p window-start))
+	(redisplay)
+	(slime--display-region (l2p start) (l2p end))
+	(redisplay)
+	(cl-assert (= (l2p expected-window-start) (window-start)) t)
+	(cl-assert (l2p expected-point) (point))))))
 
 (def-slime-test find-definition
     (name buffer-package snippet)
@@ -752,7 +805,8 @@ Confirm that SUBFORM is correctly located."
 
 (defun sldb-first-abort-restart ()
   (let ((case-fold-search t))
-    (cl-position-if (lambda (x) (string-match "abort" (car x))) sldb-restarts)))
+    (cl-position-if (lambda (x) (string-match "abort" (car x)))
+		    sldb-restarts)))
 
 (def-slime-test loop-interrupt-quit
     ()
@@ -1121,7 +1175,8 @@ CONTINUES  ... how often the continue restart should be invoked"
     (n delay interrupts)
     "Let Lisp produce output faster than Emacs can consume it."
     `((400 0.03 3))
-  (slime-skip-test "test is currently unstable")
+  (when noninteractive
+    (slime-skip-test "test is currently unstable"))
   (slime-check "No debugger" (not (sldb-get-default-buffer)))
   (slime-eval-async `(swank:flow-control-test ,n ,delay))
   (sleep-for 0.2)
@@ -1211,7 +1266,6 @@ Reconnect afterwards."
 (cl-defun slime-test-recipe-test-for (&key preflight
                                            takeoff
                                            landing)
-  
   (let ((success nil)
         (test-file (make-temp-file "slime-recipe-" nil ".el"))
         (test-forms
@@ -1279,9 +1333,7 @@ Reconnect afterwards."
                 (require 'slime-autoloads)
                 (setq inferior-lisp-program ,inferior-lisp-program)
                 (setq slime-contribs '(slime-fancy)))
-   
    :takeoff `((call-interactively 'slime))
-   
    :landing `((unless (and (featurep 'slime-repl)
                            (find 'swank-repl slime-required-modules))
                 (die "slime-repl not loaded properly"))
@@ -1299,9 +1351,7 @@ Reconnect afterwards."
                 (require 'slime)
                 (setq inferior-lisp-program ,inferior-lisp-program)
                 (slime-setup '(slime-fancy)))
-   
    :takeoff `((call-interactively 'slime))
-   
    :landing `((unless (and (featurep 'slime-repl)
                            (find 'swank-repl slime-required-modules))
                 (die "slime-repl not loaded properly"))
@@ -1317,13 +1367,11 @@ Reconnect afterwards."
   (slime-test-recipe-test-for
    :preflight `((add-to-list 'load-path ,slime-path)
                 (require 'slime-autoloads))
-   
    :takeoff `((if (featurep 'slime)
                   (die "Didn't expect SLIME to be loaded so early!"))
-              (find-file ,(make-temp-file "slime-lisp-source-file" nil ".lisp"))
+              (find-file ,(make-temp-file "slime-lisp-source-file" nil
+					  ".lisp"))
               (unless (featurep 'slime)
                 (die "Expected SLIME to be fully loaded by now")))))
-
-
 
 (provide 'slime-tests)
