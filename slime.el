@@ -3,7 +3,7 @@
 ;; URL: https://github.com/slime/slime
 ;; Package-Requires: ((cl-lib "0.5"))
 ;; Keywords: languages, lisp, slime
-;; Version: 2.7
+;; Version: 2.9
 
 ;;;; License
 ;;     Copyright (C) 2003  Eric Marsden, Luke Gorrie, Helmut Eller
@@ -389,7 +389,6 @@ PROPERTIES specifies any default face properties."
 This is a hack so that we can reinitilize the real slime-mode-map
 more easily. See `slime-init-keymaps'.")
 
-(defvar slime-modeline-string)
 (defvar slime-buffer-connection)
 (defvar slime-dispatching-connection)
 (defvar slime-current-thread)
@@ -431,8 +430,7 @@ Full set of commands:
   nil
   nil
   slime-mode-indirect-map
-  (slime-setup-command-hooks)
-  (setq slime-modeline-string (slime-modeline-string)))
+  (slime-setup-command-hooks))
 
 
 
@@ -479,6 +477,9 @@ information."
            (cond ((and (zerop sldbs) (zerop pending)) nil)
                  ((zerop sldbs) (format " %s" pending))
                  (t (format " %s/%s" pending sldbs)))))))
+
+(defun slime--recompute-modelines ()
+  (force-mode-line-update t))
 
 
 ;;;;; Key bindings
@@ -2163,11 +2164,13 @@ Debugged requests are ignored."
              (slime-display-oneliner "; pipelined request... %S" form))
            (let ((id (cl-incf (slime-continuation-counter))))
              (slime-send `(:emacs-rex ,form ,package ,thread ,id))
-             (push (cons id continuation) (slime-rex-continuations))))
+             (push (cons id continuation) (slime-rex-continuations))
+             (slime--recompute-modelines)))
           ((:return value id)
            (let ((rec (assq id (slime-rex-continuations))))
              (cond (rec (setf (slime-rex-continuations)
                               (remove rec (slime-rex-continuations)))
+                        (slime--recompute-modelines)
                         (funcall (cdr rec) value))
                    (t
                     (error "Unexpected reply: %S %S" id value)))))
@@ -5669,24 +5672,25 @@ This is 0 if START and END at the same line."
     (recenter recenter-arg)))
 
 ;; Set window-start so that the region from START to END becomes visible.
+;; START is inclusive; END is exclusive.
 (defun slime--adjust-window-start (start end)
-  (let ((window-height (window-text-height))
-        (region-height (count-screen-lines start end)))
+  (let* ((last (max start (1- end)))
+         (window-height (window-text-height))
+         (region-height (count-screen-lines start last t)))
     ;; if needed, make the region visible
     (when (or (not (pos-visible-in-window-p start))
-              (not (pos-visible-in-window-p end)))
+              (not (pos-visible-in-window-p last)))
       (let* ((nlines (cond ((or (< start (window-start))
                                 (>= region-height window-height))
                             0)
                            (t
-                            (- (+ 1 region-height))))))
+                            (- region-height)))))
         (goto-char start)
-        (recenter nlines)
-        ;; update window-end
-        (redisplay)))
+        (recenter nlines)))
     (cl-assert (pos-visible-in-window-p start))
-    (cl-assert (or (pos-visible-in-window-p end)
-                   (>= region-height window-height)))))
+    (cl-assert (or (pos-visible-in-window-p last)
+                   (> region-height window-height)))
+    (cl-assert (pos-visible-in-window-p (1- (window-end nil t))))))
 
 ;; move POS to visible region
 (defun slime--adjust-window-point (pos)
@@ -5695,7 +5699,7 @@ This is 0 if START and END at the same line."
         ((< pos (window-start))
          (goto-char (window-start)))
         (t
-         (goto-char (1- (window-end)))
+         (goto-char (1- (window-end nil t)))
          (move-to-column 0)))
   (cl-assert (pos-visible-in-window-p (point))))
 
@@ -6931,6 +6935,12 @@ is setup, unless the user already set one explicitly."
   authors
   license)
 
+(defun slime-contrib--enable-fun (name)
+  (intern (concat (symbol-name name) "-init")))
+
+(defun slime-contrib--disable-fun (name)
+  (intern (concat (symbol-name name) "-unload")))
+
 (defmacro define-slime-contrib (name _docstring &rest clauses)
   (declare (indent 1))
   (cl-destructuring-bind (&key slime-dependencies
@@ -6940,28 +6950,26 @@ is setup, unless the user already set one explicitly."
                                authors
                                license)
       (cl-loop for (key . value) in clauses append `(,key ,value))
-    (cl-labels
-        ((enable-fn (c) (intern (concat (symbol-name c) "-init")))
-         (disable-fn (c) (intern (concat (symbol-name c) "-unload"))))
-      `(progn
-         ,@(mapcar (lambda (d) `(require ',d)) slime-dependencies)
-         (defun ,(enable-fn name) ()
-           (mapc #'funcall ',(mapcar
-                              #'enable-fn
-                              slime-dependencies))
-           (mapc #'slime-require ',swank-dependencies)
-           ,@on-load)
-         (defun ,(disable-fn name) ()
-           ,@on-unload
-           (mapc #'funcall ',(mapcar
-                              #'disable-fn
-                              slime-dependencies)))
-         (put 'slime-contribs ',name
-              (make-slime-contrib
-               :name ',name :authors ',authors :license ',license
-               :slime-dependencies ',slime-dependencies
-               :swank-dependencies ',swank-dependencies
-               :enable ',(enable-fn name) :disable ',(disable-fn name)))))))
+    `(progn
+       ,@(mapcar (lambda (d) `(require ',d)) slime-dependencies)
+       (defun ,(slime-contrib--enable-fun name) ()
+         (mapc #'funcall ',(mapcar
+                            #'slime-contrib--enable-fun
+                            slime-dependencies))
+         (mapc #'slime-require ',swank-dependencies)
+         ,@on-load)
+       (defun ,(slime-contrib--disable-fun name) ()
+         ,@on-unload
+         (mapc #'funcall ',(mapcar
+                            #'slime-contrib--disable-fun
+                            slime-dependencies)))
+       (put 'slime-contribs ',name
+            (make-slime-contrib
+             :name ',name :authors ',authors :license ',license
+             :slime-dependencies ',slime-dependencies
+             :swank-dependencies ',swank-dependencies
+             :enable ',(slime-contrib--enable-fun name)
+             :disable ',(slime-contrib--disable-fun name))))))
 
 (defun slime-all-contribs ()
   (cl-loop for (nil val) on (symbol-plist 'slime-contribs) by #'cddr

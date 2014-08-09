@@ -1,3 +1,89 @@
+2014-08-01  Helmut Eller  <heller@common-lisp.net>
+
+	For CMUCL, make M-. work on condition classes.
+
+	* swank-cmucl.lisp (pcl-class-location): Renamed from
+	class-location.
+	(class-location): New.
+	(class-definitions): Search condition classes in infodb.
+
+2014-07-29  Helmut Eller  <heller@common-lisp.net>
+
+	* Makefile (clean-fasls): Recognize more file extensions.
+
+2014-07-29  Helmut Eller  <heller@common-lisp.net>
+
+	Avoid some compiler warnings.
+
+	* swank-backend.lisp (utf8-encode): Avoid unreachable code
+	warnings.
+	(%utf8-encode): New helper.
+	* swank-sbcl.lisp (sbcl-wrap): Add ignore declaration.
+	* swank.lisp (before-init): Don't call
+	warn-unimplemented-interfaces as it confuses first time users.
+	(thread-for-evaluation): Suppress unused var warnings.
+
+2014-07-28  Helmut Eller  <heller@common-lisp.net>
+
+	Fix bug involving stale window-end.
+
+	Call window-end with update=t.  That works better than calling
+	redisplay when we scroll because window-end may be wrong even
+	without scrolling.
+
+	* slime.el (slime--adjust-window-point): Call window-end with
+	update argument.
+	(slime--adjust-window-start): Remove explicit call to redisplay.
+	Stricter assertion: LAST should be visible as long as
+	REGION-HEIGHT <= WINDOW-HEIGHT not <.
+	* slime-tests.el (display-region): Actually check point ends up as
+	expected.  The old code was buggy and only checked for non-nil.
+
+2014-07-27  Helmut Eller  <heller@common-lisp.net>
+
+	Fix another off-by-one bug.
+
+	* slime.el (slime--adjust-window-start): Scroll one line more.
+	Also handle case when (= start end 1).
+	* slime-tests.el (display-region): Add test.
+
+2014-07-27  Helmut Eller  <heller@common-lisp.net>
+
+	Don't use cl-labels as it is miscompiled in some Emacs versions.
+
+	* slime.el (define-slime-contrib): Get rid of cl-labels.
+	(slime-contrib--enable-fun, slime-contrib--disable-fun): New
+	helpers.
+
+2014-07-27  Helmut Eller  <heller@common-lisp.net>
+
+	Update modeline more often.
+
+	The numbers in the modeline can be out of date when all RPCs
+	complete without user input; probably because modeline updating is
+	performed in some lazy way.
+
+	* slime.el (slime--recompute-modelines): Resurrected.
+	(slime-dispatch-event): Force modeline updates.
+	(slime-modeline-string): Deleted. The variable is no longer
+	needed.
+
+2014-07-27  Helmut Eller  <heller@common-lisp.net>
+
+	Fix display related bugs.
+
+	* slime.el (slime--adjust-window-start): Consider the END argument
+	exclusive but count trailing newlines normally.  Adjust the
+	assertion so that (1- END) is the last visible position.
+	* slime-tests.el (display-region):  Add tests for the situation
+	when (1- END) should be visible but not END.
+
+2014-06-17  Stas Boukarev  <stassats@gmail.com>
+
+	* swank-sbcl.lisp (emacs-inspect sb-kernel:code-component):
+	There's no TRACE-TABLE-OFFSET slot. Don't bother showing it on
+	older SBCLs, since it isn't really useful.
+
 2014-05-16  Helmut Eller  <heller@common-lisp.net>
 
 	Fix display related bugs.
