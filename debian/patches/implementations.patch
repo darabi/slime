@@ -1,7 +1,7 @@
 Index: slime/slime.el
 ===================================================================
---- slime.orig/slime.el	2014-06-11 19:44:38.000000001 +0200
-+++ slime/slime.el	2014-06-11 19:44:41.000000001 +0200
+--- slime.orig/slime.el	2014-10-21 20:17:59.000000001 +0200
++++ slime/slime.el	2014-10-21 20:18:03.000000001 +0200
 @@ -145,6 +145,15 @@
  (defvar slime-protocol-version nil)
  (setq slime-protocol-version (slime-changelog-date))
@@ -18,7 +18,7 @@ Index: slime/slime.el
  
  ;;;; Customize groups
  ;;
-@@ -940,7 +949,7 @@
+@@ -933,7 +942,7 @@
  (defvar inferior-lisp-program "lisp"
    "*Program name for invoking an inferior Lisp with for Inferior Lisp mode.")
  
