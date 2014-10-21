@@ -81,6 +81,14 @@ Exits Emacs when finished. The exit code is the number of failed tests."
     (message (concat "SKIPPING: " message))
     (ert-pass)))
 
+(defun slime-tests--undefine-all ()
+  (dolist (test (ert-select-tests t t))
+    (let* ((sym (ert-test-name test)))
+      (cl-assert (eq (get sym 'ert--test) test))
+      (cl-remprop sym 'ert--test))))
+
+(slime-tests--undefine-all)
+
 (eval-and-compile
   (defun slime-tests-auto-tags ()
     (append '(slime)
@@ -209,9 +217,10 @@ conditions (assertions)."
 
 ;; XXX: unused function
 (defun slime-check-sldb-level (expected)
-  (let ((sldb-level (when-let (sldb (sldb-get-default-buffer))
-                      (with-current-buffer sldb
-                        sldb-level))))
+  (let ((sldb-level (let ((sldb (sldb-get-default-buffer)))
+		      (if sldb
+			  (with-current-buffer sldb
+			    sldb-level)))))
     (slime-check ("SLDB level (%S) is %S" expected sldb-level)
       (equal expected sldb-level))))
 
@@ -223,9 +232,10 @@ conditions (assertions)."
     (should (equal expected actual))))
 
 (defun sldb-level ()
-  (when-let (sldb (sldb-get-default-buffer))
-    (with-current-buffer sldb
-      sldb-level)))
+  (let ((sldb (sldb-get-default-buffer)))
+    (if sldb
+	(with-current-buffer sldb
+	  sldb-level))))
 
 (defun slime-sldb-level= (level)
   (equal level (sldb-level)))
@@ -405,7 +415,7 @@ after quitting Slime's temp buffer."
 (defun slime-test--display-region-eval-arg (line window-height)
   (cl-etypecase line
     (number line)
-    (cons (destructure-case line
+    (cons (slime-dcase line
 	    ((+h line)
 	     (+ (slime-test--display-region-eval-arg line window-height)
 		window-height))
@@ -499,6 +509,17 @@ after quitting Slime's temp buffer."
 confronted with nasty #.-fu."
     '(("#.(prog1 nil (defvar *foobar* 42))
 
+       (defun .foo. (x)
+         (+ x #.*foobar*))
+
+       #.(prog1 nil (makunbound '*foobar*))
+       "
+       "SWANK"
+       "[ \t]*(defun .foo. "
+       )
+      ("#.(prog1 nil (defvar *foobar* 42))
+
+       ;; some comment
        (defun .foo. (x)
          (+ x #.*foobar*))
 
@@ -617,6 +638,22 @@ string buffer position filename policy)")
                        (lambda (pattern arglist)
                          (and arglist (string-match pattern arglist))))))
 
+(defun slime-test--compile-defun (program subform)
+  (slime-check-top-level)
+  (with-temp-buffer
+    (lisp-mode)
+    (insert program)
+    (let ((font-lock-verbose nil))
+      (setq slime-buffer-package ":swank")
+      (slime-compile-string (buffer-string) 1)
+      (setq slime-buffer-package ":cl-user")
+      (slime-sync-to-top-level 5)
+      (goto-char (point-max))
+      (slime-previous-note)
+      (slime-check error-location-correct
+        (equal (read (current-buffer)) subform))))
+  (slime-check-top-level))
+
 (def-slime-test (compile-defun (:fails-for "allegro" "lispworks" "clisp"))
     (program subform)
     "Compile PROGRAM containing errors.
@@ -634,9 +671,6 @@ Confirm that SUBFORM is correctly located."
              (cl-user::bar))"
        (cl-user::bar))
       ("(defun cl-user::foo ()
-           (list `(1 ,(random 10) 2 ,@(random 10) 3 ,(cl-user::bar))))"
-       (cl-user::bar))
-      ("(defun cl-user::foo ()
           \"\\\" bla bla \\\"\"
           (cl-user::bar))"
        (cl-user::bar))
@@ -650,20 +684,7 @@ Confirm that SUBFORM is correctly located."
 
         "
        (cl-user::bar)))
-  (slime-check-top-level)
-  (with-temp-buffer
-    (lisp-mode)
-    (insert program)
-    (let ((font-lock-verbose nil))
-      (setq slime-buffer-package ":swank")
-      (slime-compile-string (buffer-string) 1)
-      (setq slime-buffer-package ":cl-user")
-      (slime-sync-to-top-level 5)
-      (goto-char (point-max))
-      (slime-previous-note)
-      (slime-check error-location-correct
-        (equal (read (current-buffer)) subform))))
-  (slime-check-top-level))
+  (slime-test--compile-defun program subform))
 
 ;; This test ideally would be collapsed into the previous
 ;; compile-defun test, but only 1 case fails for ccl--and that's here
@@ -675,22 +696,22 @@ Confirm that SUBFORM is correctly located."
     '(("(defun foo ()
           #+#.'(:and) (/ 1 0))"
        (/ 1 0)))
-  (slime-check-top-level)
-  (with-temp-buffer
-    (lisp-mode)
-    (insert program)
-    (let ((font-lock-verbose nil))
-      (setq slime-buffer-package ":swank")
-      (slime-compile-string (buffer-string) 1)
-      (setq slime-buffer-package ":cl-user")
-      (slime-sync-to-top-level 5)
-      (goto-char (point-max))
-      (slime-previous-note)
-      (slime-check error-location-correct
-        (equal (read (current-buffer)) subform))))
-  (slime-check-top-level))
+  (slime-test--compile-defun program subform))
 
-(def-slime-test (compile-file (:fails-for "allegro" "lispworks" "clisp"))
+;; SBCL used to pass this one but since they changed the
+;; backquote/unquote reader it fails.
+(def-slime-test (compile-defun-with-backquote
+                 (:fails-for "allegro" "lispworks" "clisp" "sbcl"))
+    (program subform)
+    "Compile PROGRAM containing errors.
+Confirm that SUBFORM is correctly located."
+    '(("(defun cl-user::foo ()
+           (list `(1 ,(random 10) 2 ,@(make-list (random 10)) 3
+                     ,(cl-user::bar))))"
+       (cl-user::bar)))
+  (slime-test--compile-defun program subform))
+
+(def-slime-test (compile-file (:fails-for "allegro" "clisp"))
     (string)
     "Insert STRING in a file, and compile it."
     `((,(pp-to-string '(defun foo () nil))))
@@ -1123,8 +1144,8 @@ on *DEBUGGER-HOOK*."
 (def-slime-test end-of-file
     (expr)
     "Signalling END-OF-FILE should invoke the debugger."
-    '(((cl:read-from-string ""))
-      ((cl:error 'cl:end-of-file)))
+    '(((cl:error 'cl:end-of-file))
+      ((cl:read-from-string "")))
   (let ((value (slime-eval
                 `(cl:let ((condition nil))
                          (cl:with-simple-restart
@@ -1134,9 +1155,8 @@ on *DEBUGGER-HOOK*."
                                                (cl:setq condition c)
                                                (cl:continue))))
                                   ,expr))
-                         (cl:and (cl:typep condition 'cl:condition)
-                                 (cl:string (cl:type-of condition)))))))
-    (slime-test-expect "Debugger invoked" "END-OF-FILE" value)))
+                         (cl:if (cl:typep condition 'cl:end-of-file) t)))))
+    (slime-test-expect "Debugger invoked" t value)))
 
 (def-slime-test interrupt-at-toplevel
     ()
