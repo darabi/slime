@@ -1,3 +1,4 @@
 *.lisp usr/share/common-lisp/source/slime/
 contrib/*.lisp usr/share/common-lisp/source/slime/contrib/
+swank/*.lisp usr/share/common-lisp/source/slime/swank/
 *.asd usr/share/common-lisp/source/slime/

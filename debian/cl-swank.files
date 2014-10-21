@@ -1,2 +1,3 @@
 usr/share/common-lisp/source/slime/*
 usr/share/common-lisp/source/slime/contrib/*
+usr/share/common-lisp/source/slime/swank/*
