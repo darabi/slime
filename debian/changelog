@@ -1,3 +1,9 @@
+slime (2:2.10.1-2) unstable; urgency=low
+
+  * Standards 3.9.6 (no real change).
+
+ -- Milan Zamazal <pdm@debian.org>  Thu, 23 Oct 2014 06:44:30 +0200
+
 slime (2:2.10.1-1) unstable; urgency=low
 
   * New upstream.
