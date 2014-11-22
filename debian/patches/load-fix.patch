@@ -1,0 +1,13 @@
+Index: slime/contrib/swank-presentations.lisp
+===================================================================
+--- slime.orig/contrib/swank-presentations.lisp	2014-11-22 20:40:29.545296609 +0100
++++ slime/contrib/swank-presentations.lisp	2014-11-22 20:47:18.758319533 +0100
+@@ -11,7 +11,7 @@
+ 
+ (in-package :swank)
+ 
+-(eval-when (:compile-toplevel :load-toplevel)
++(eval-when (:compile-toplevel :load-toplevel :execute)
+   (swank-require :swank-repl))
+ 
+ ;;;; Recording and accessing results of computations

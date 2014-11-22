@@ -1,3 +1,10 @@
+slime (2:2.10.1-3) unstable; urgency=low
+
+  * Prevent error on startup; thanks to Robert J. Macomber;
+    closes: #766944.
+
+ -- Milan Zamazal <pdm@debian.org>  Sat, 22 Nov 2014 21:05:22 +0100
+
 slime (2:2.10.1-2) unstable; urgency=low
 
   * Standards 3.9.6 (no real change).
