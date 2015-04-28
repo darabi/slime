@@ -87,6 +87,7 @@ binary-indep: build install
 #	dh_installdebconf	
 #	dh_installlogrotate
 	dh_installemacsen
+	find debian/slime -name cl-lib.el -exec rm {} \;
 #	dh_installpam
 #	dh_installmime
 #	dh_installinit
