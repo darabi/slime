@@ -1,3 +1,9 @@
+slime (2:2.13-1) unstable; urgency=low
+
+  * New upstream.
+
+ -- Milan Zamazal <pdm@debian.org>  Tue, 28 Apr 2015 21:03:31 +0200
+
 slime (2:2.10.1-3) unstable; urgency=low
 
   * Prevent error on startup; thanks to Robert J. Macomber;
