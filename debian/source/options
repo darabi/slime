@@ -1,0 +1,1 @@
+extend-diff-ignore = "^doc/(contributors\.texi|slime-refcard\.pdf)$"

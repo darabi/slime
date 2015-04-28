@@ -1,6 +1,7 @@
 slime (2:2.13-1) unstable; urgency=low
 
   * New upstream.
+  * Ignore deletion of auto-generated files.
   * Don't install old cl-lib.el from SLIME; closes: #767527.
 
  -- Milan Zamazal <pdm@debian.org>  Tue, 28 Apr 2015 21:03:31 +0200
