@@ -1,6 +1,7 @@
 slime (2:2.15-1) unstable; urgency=low
 
   * New upstream.
+  * Use cl-remove-if instead of remove-if in implementations.patch.
 
  -- Milan Zamazal <pdm@debian.org>  Thu, 31 Dec 2015 22:05:09 +0100
 

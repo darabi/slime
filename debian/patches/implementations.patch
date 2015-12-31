@@ -9,7 +9,7 @@ Index: slime/slime.el
 +(defun slime-gather-lisp-implementations ()
 +  "Compute sane default value for slime-lisp-implementations."
 +  (let ((known-lisps '("sbcl" "clisp" "ecl" "cmucl")))
-+    (remove-if
++    (cl-remove-if
 +     'null
 +     (mapcar 
 +      (lambda (l) (if (executable-find l) (list l (list l))))
