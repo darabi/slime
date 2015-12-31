@@ -4,4 +4,3 @@ implementations.patch
 docbuild.patch
 paths.patch
 cl-lib.patch
-load-fix.patch

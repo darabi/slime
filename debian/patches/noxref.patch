@@ -1,8 +1,8 @@
 Index: slime/swank-loader.lisp
 ===================================================================
---- slime.orig/swank-loader.lisp	2014-10-21 20:14:10.000000001 +0200
-+++ slime/swank-loader.lisp	2014-10-21 20:17:08.000000001 +0200
-@@ -41,7 +41,7 @@
+--- slime.orig/swank-loader.lisp
++++ slime/swank-loader.lisp
+@@ -42,7 +42,7 @@
    #+clozure '(metering (swank ccl) (swank gray))
    #+lispworks '((swank lispworks) (swank gray))
    #+allegro '((swank allegro) (swank gray))

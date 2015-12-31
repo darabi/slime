@@ -1,8 +1,8 @@
 Index: slime/slime.el
 ===================================================================
---- slime.orig/slime.el	2015-04-28 21:15:08.000000000 +0200
-+++ slime/slime.el	2015-04-28 21:17:12.438427583 +0200
-@@ -128,11 +128,7 @@
+--- slime.orig/slime.el
++++ slime/slime.el
+@@ -128,11 +128,7 @@ CONTRIBS is a list of contrib packages t
  
  (eval-and-compile
    (defun slime--changelog-file-name ()
@@ -17,8 +17,8 @@ Index: slime/slime.el
      "Return the datestring of the latest entry in the ChangeLog file.
 Index: slime/swank-loader.lisp
 ===================================================================
---- slime.orig/swank-loader.lisp	2015-04-28 21:15:08.000000000 +0200
-+++ slime/swank-loader.lisp	2015-04-28 21:15:58.095111832 +0200
+--- slime.orig/swank-loader.lisp
++++ slime/swank-loader.lisp
 @@ -17,6 +17,10 @@
  ;;   (setq swank-loader::*fasl-directory* "/tmp/fasl/")
  ;;   (swank-loader:init)
@@ -30,7 +30,7 @@ Index: slime/swank-loader.lisp
  (cl:defpackage :swank-loader
    (:use :cl)
    (:export :init
-@@ -134,7 +138,7 @@
+@@ -136,7 +140,7 @@ operating system, and hardware architect
  (defun slime-version-string ()
    "Return a string identifying the SLIME version.
  Return nil if nothing appropriate is available."
@@ -39,7 +39,7 @@ Index: slime/swank-loader.lisp
                       :if-does-not-exist nil)
      (and s (symbol-name (read s)))))
  
-@@ -151,10 +155,11 @@
+@@ -153,10 +157,11 @@ Return nil if nothing appropriate is ava
  
  (defun binary-pathname (src-pathname binary-dir)
    "Return the pathname where SRC-PATHNAME's binary should be compiled."

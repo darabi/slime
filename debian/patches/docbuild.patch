@@ -1,7 +1,7 @@
 Index: slime/doc/Makefile
 ===================================================================
---- slime.orig/doc/Makefile	2014-04-05 17:03:59.000000001 +0200
-+++ slime/doc/Makefile	2014-04-05 17:04:20.000000001 +0200
+--- slime.orig/doc/Makefile
++++ slime/doc/Makefile
 @@ -7,6 +7,7 @@
  # installed their emacs from source probably have a GCS-ish file
  # hierarchy.
@@ -10,7 +10,7 @@ Index: slime/doc/Makefile
  
  # What command to use to install info file(s)
  INSTALL_CMD=install -m 644
-@@ -26,10 +27,10 @@
+@@ -26,10 +27,10 @@ html/index.html   generate on html file
  html.tgz          create a tarball of all html files\n\
  clean             remove generated files"
  
@@ -23,7 +23,7 @@ Index: slime/doc/Makefile
  
  slime.ps: slime.dvi
  	dvips -o $@ $<
-@@ -53,7 +54,10 @@
+@@ -53,7 +54,10 @@ publish: slime.pdf html.tgz
  	ssh $(CLUSER)@common-lisp.net "cd $(DOCDIR); tar -zxf html.tgz"
  
  slime.pdf: $(TEXI)
@@ -35,7 +35,7 @@ Index: slime/doc/Makefile
  
  install: install-info
  
-@@ -102,10 +106,11 @@
+@@ -103,10 +107,11 @@ uninstall-info:
  		install-info --infodir="$(infodir)" --remove "$(infodir)/$(infofiles)" || :; fi
  	rm -f $(infodir)/$(infofiles)
  

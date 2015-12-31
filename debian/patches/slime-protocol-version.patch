@@ -1,8 +1,8 @@
 Index: slime/slime.el
 ===================================================================
---- slime.orig/slime.el	2014-04-05 17:04:00.000000001 +0200
-+++ slime/slime.el	2014-04-05 17:04:04.000000001 +0200
-@@ -143,8 +143,7 @@
+--- slime.orig/slime.el
++++ slime/slime.el
+@@ -150,8 +150,7 @@ Return nil if the ChangeLog file cannot
        date)))
  
  (defvar slime-protocol-version nil)
