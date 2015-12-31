@@ -21,6 +21,7 @@
   (:use :cl)
   (:export :init
            :dump-image
+           :list-fasls
            :*source-directory*
            :*fasl-directory*))
 
@@ -61,6 +62,7 @@
   '(:powerpc :ppc :x86 :x86-64 :x86_64 :amd64 :i686 :i586 :i486 :pc386 :iapx386
     :sparc64 :sparc :hppa64 :hppa :arm :armv5l :armv6l :armv7l
     :pentium3 :pentium4
+    :mips :mipsel
     :java-1.4 :java-1.5 :java-1.6 :java-1.7))
 
 (defun q (s) (read-from-string s))
@@ -344,3 +346,19 @@ global variabes in SWANK."
 (defun dump-image (filename)
   (init :setup nil)
   (funcall (q "swank/backend:save-image") filename))
+
+(defun list-fasls (&key (include-contribs t) (compile t)
+                        (quiet (not *compile-verbose*)))
+  "List up SWANK's fasls along with their dependencies."
+  (flet ((collect-fasls (files fasl-dir)
+           (when compile
+             (compile-files files fasl-dir nil quiet))
+           (loop for src in files
+                 when (probe-file (binary-pathname src fasl-dir))
+                   collect it)))
+    (append (collect-fasls (src-files *swank-files* *source-directory*)
+                           *fasl-directory*)
+            (when include-contribs
+              (collect-fasls (src-files *contribs*
+                                        (contrib-dir *source-directory*))
+                             (contrib-dir *fasl-directory*))))))
