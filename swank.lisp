@@ -1093,7 +1093,8 @@ The processing is done in the extent of the toplevel restart."
        :presentation-start :presentation-end
        :new-package :new-features :ed :indentation-update
        :eval :eval-no-wait :background-message :inspect :ping
-       :y-or-n-p :read-from-minibuffer :read-string :read-aborted :test-delay)
+       :y-or-n-p :read-from-minibuffer :read-string :read-aborted :test-delay
+       :write-image)
       &rest _)
      (declare (ignore _))
      (encode-message event (current-socket-io)))
@@ -1761,6 +1762,13 @@ Errors are trapped and invoke our debugger."
                (format nil "~A~D (~a bit~:p, #x~X, #o~O, #b~B)" 
                        *echo-area-prefix*
                        i (integer-length i) i i i)))
+            ((and (typep (car values) 'ratio)
+                  (null (cdr values))
+                  (ignore-errors
+                   ;; The ratio may be to large to be represented as a single float
+                   (format nil "~A~D (~:*~f)" 
+                           *echo-area-prefix*
+                           (car values)))))
             (t (format nil "~a~{~S~^, ~}" *echo-area-prefix* values))))))
 
 (defmacro values-to-string (values)
@@ -2585,20 +2593,20 @@ the filename of the module (or nil if the file doesn't exist).")
 
 (defun merged-directory (dirname defaults)
   (pathname-directory
-   (merge-pathnames 
+   (merge-pathnames
     (make-pathname :directory `(:relative ,dirname) :defaults defaults)
     defaults)))
 
 (defvar *load-path* '()
   "A list of directories to search for modules.")
 
-(defun module-canditates (name dir)
+(defun module-candidates (name dir)
   (list (compile-file-pathname (make-pathname :name name :defaults dir))
         (make-pathname :name name :type "lisp" :defaults dir)))
 
 (defun find-module (module)
   (let ((name (string-downcase module)))
-    (some (lambda (dir) (some #'probe-file (module-canditates name dir)))
+    (some (lambda (dir) (some #'probe-file (module-candidates name dir)))
           *load-path*)))
 
 
@@ -3730,6 +3738,8 @@ Collisions are caused because package information is ignored."
             (format stream "~&Symbols with collisions:~%~{  ~S~%~}"
                     collisions))))))
 
+;;; FIXME: it's too slow on CLASP right now, remove once it's fast enough.
+#-clasp
 (add-hook *pre-reply-hook* 'sync-indentation-to-emacs)
 
 
