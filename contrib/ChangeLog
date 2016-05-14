@@ -1,3 +1,98 @@
+2016-02-11  Stas Boukarev  <stassats@gmail.com>
+
+	* swank-sbcl-exts.lisp (compute-enriched-decoded-arglist):
+	Properly handle instruction macros and instruction functions.
+
+2016-02-07  Stas Boukarev  <stassats@gmail.com>
+
+	* swank-sbcl-exts.lisp (compute-enriched-decoded-arglist): Adjust
+	for the changes in SBCL.
+
+2016-02-02  Jon Oddie  <j.j.oddie@gmail.com>
+
+	Add `slime-macrostep' contrib (fancy in-place macroexpansion).
+
+	* slime-macrostep.el: New file.
+	* swank-macrostep.lisp: New file.
+	* test/slime-macrostep-tests.el: New file.
+	* slime-fancy.el (slime-fancy): Add `slime-macrostep'.
+
+2016-01-29  Sergey Kostyaev  <s.kostyaev@office.ngs.ru>
+
+	* swank-kawa.scm (request-breakpoint, init-global-field): Handle
+	new class names.
+
+2016-01-29  Luís Oliveira  <loliveira@common-lisp.net>
+
+	* swank-presentation-streams.lisp: Don't monkey patch various
+	stream printing internals unconditionally. Instead wait for
+	init-presentation-streams, if it happens.
+
+2016-01-13  Stas Boukarev  <stassats@gmail.com>
+
+	* swank-fancy-inspector.lisp (inspect-type-specifier):
+	(sb-int:info :type :expander symbol) not always returns a list.
+	Also print an empty lambda-list as () not NIL.
+
+2016-01-11  Stas Boukarev  <stassats@gmail.com>
+
+	* swank-repl.lisp (*globally-redirect-io*): move the definition
+	before its usage.
+
+	* swank-fancy-inspector.lisp (inspect-type-specifier): Avoid
+	calling (sb-int:info :type :translator) as it now produces a
+	style-warning, guard it through #., not just with
+	swank/sbcl::sbcl-version>=.
+
+2015-11-29  Stas Boukarev  <stassats@gmail.com>
+
+	* swank-fancy-inspector.lisp (inspect-type-specifier): The latest
+	SBCL doesn't have :type :translator info anymore.
+
+2015-11-26  Luís Oliveira  <loliveira@common-lisp.net>
+
+	* swank-repl.lisp (create-repl): Let the global redirection
+	mechanism handle the stream redirection instead of binding output
+	and io streams in the REPL thread. This lets redirect REPL output
+	in subsequent connections that request global redirection. (See
+	<http://thread.gmane.org/gmane.lisp.slime.devel/11645> for
+	discussion and a use case.)
+
+2015-11-10  Stas Boukarev  <stassats@gmail.com>
+
+	* swank-fuzzy.lisp (fuzzy-find-matching-packages): match package
+	local nicknames.
+
+2015-10-18  Helmut Eller  <heller@common-lisp.net>
+
+	Stop using slime-complete-symbol-function.
+	Use slime-completion-at-point-functions instead.
+
+	* slime-c-p-c.el (slime-c-p-c-completion-at-point): New. Set
+	slime-completion-at-point-functions accordingly.
+
+2015-10-17  Helmut Eller  <heller@common-lisp.net>
+
+	* slime-repl.el (slime-repl-mode): Use slime--completion-at-point.
+	* inferior-slime.el (inferior-slime-mode): Idem.
+
+2015-10-11  Helmut Eller  <heller@common-lisp.net>
+
+	* slime-repl.el (slime-repl-mode): Delete remaining use of
+	slime-setup-command-hooks.
+
+2015-10-11  Helmut Eller  <heller@common-lisp.net>
+
+	Don't rebind TAB is slime-repl-mode.
+
+	That works no longer as Emacs' completion framework overrides TAB
+	with a transient keymap.
+
+	* slime-repl.el (slime-repl-mode): Set
+	completion-at-point-functions and tab-always-indent to get a
+	similar behavior to slime-indent-and-complete-symbol.
+	* inferior-slime.el (inferior-slime-mode): Idem.
+
 2015-08-06  Luís Oliveira  <loliveira@common-lisp.net>
 
 	Some contribs did not invoke SWANK-REQUIRE when the lisp file was

@@ -10,67 +10,7 @@
 ;;; them separately for each Lisp implementation. These extensions are
 ;;; available to us here via the `SWANK/BACKEND' package.
 
-(defpackage swank
-  (:use cl swank/backend swank/match swank/rpc)
-  (:export #:startup-multiprocessing
-           #:start-server
-           #:create-server
-           #:stop-server
-           #:restart-server
-           #:ed-in-emacs
-           #:inspect-in-emacs
-           #:print-indentation-lossage
-           #:invoke-slime-debugger
-           #:swank-debugger-hook
-           #:emacs-inspect
-           ;;#:inspect-slot-for-emacs
-           ;; These are user-configurable variables:
-           #:*communication-style*
-           #:*dont-close*
-           #:*fasl-pathname-function*
-           #:*log-events*
-           #:*log-output*
-           #:*use-dedicated-output-stream*
-           #:*dedicated-output-stream-port*
-           #:*configure-emacs-indentation*
-           #:*readtable-alist*
-           #:*globally-redirect-io*
-           #:*global-debugger*
-           #:*sldb-quit-restart*
-           #:*backtrace-printer-bindings*
-           #:*default-worker-thread-bindings*
-           #:*macroexpand-printer-bindings*
-           #:*swank-pprint-bindings*
-           #:*record-repl-results*
-           #:*inspector-verbose*
-           ;; This is SETFable.
-           #:debug-on-swank-error
-           ;; These are re-exported directly from the backend:
-           #:buffer-first-change
-           #:frame-source-location
-           #:gdb-initial-commands
-           #:restart-frame
-           #:sldb-step 
-           #:sldb-break
-           #:sldb-break-on-return
-           #:profiled-functions
-           #:profile-report
-           #:profile-reset
-           #:unprofile-all
-           #:profile-package
-           #:default-directory
-           #:set-default-directory
-           #:quit-lisp
-           #:eval-for-emacs
-           #:eval-in-emacs
-           #:y-or-n-p-in-emacs
-           #:*find-definitions-right-trim*
-           #:*find-definitions-left-trim*
-           #:*after-toggle-trace-hook*))
-
 (in-package :swank)
-
-
 ;;;; Top-level variables, constants, macros
 
 (defconstant cl-package (find-package :cl)
@@ -342,7 +282,6 @@ to T unless you want to debug swank internals.")
     package))
 
 (defvar *log-events* nil)
-(defvar *log-output* nil) ; should be nil for image dumpers
 
 (defun init-log-output ()
   (unless *log-output*
@@ -1429,6 +1368,14 @@ entered nothing, returns NIL when user pressed C-g."
                                            ,prompt ,initial-value))
     (third (wait-for-event `(:emacs-return ,tag result)))))
 
+(defstruct (unredable-result
+            (:constructor make-unredable-result (string))
+            (:copier nil)
+            (:print-object
+             (lambda (object stream)
+               (print-unreadable-object (object stream :type t)
+                 (princ (unredable-result-string object) stream)))))
+  string)
 
 (defun process-form-for-emacs (form)
   "Returns a string which emacs will read as equivalent to
@@ -1464,6 +1411,7 @@ converted to lower case."
 				  ,(process-form-for-emacs form)))
 	   (let ((value (caddr (wait-for-event `(:emacs-return ,tag result)))))
 	     (dcase value
+               ((:unreadable value) (make-unredable-result value))
 	       ((:ok value) value)
                ((:error kind . data) (error "~a: ~{~a~}" kind data))
 	       ((:abort) (abort))))))))
@@ -2889,12 +2837,12 @@ If non-nil, called with two arguments SPEC and TRACED-P." )
 (defslimefun swank-toggle-trace (spec-string)
   (let* ((spec (from-string spec-string))
          (retval (cond ((consp spec) ; handle complicated cases in the backend
-           (toggle-trace spec))
-          ((tracedp spec)
-	   (eval `(untrace ,spec))
-	   (format nil "~S is now untraced." spec))
-	  (t
-           (eval `(trace ,spec))
+                        (toggle-trace spec))
+                       ((tracedp spec)
+                        (eval `(untrace ,spec))
+                        (format nil "~S is now untraced." spec))
+                       (t
+                        (eval `(trace ,spec))
                         (format nil "~S is now traced." spec))))
          (traced-p (let* ((tosearch "is now traced.")
                           (start (- (length retval)
@@ -3608,7 +3556,10 @@ after each command.")
 (defun indentation-cache-loop (connection)
   (with-connection (connection)
     (loop
-     (handle-indentation-cache-request connection (receive)))))
+      (restart-case
+          (handle-indentation-cache-request connection (receive))
+        (abort ()
+          :report "Return to the indentation cache request handling loop.")))))
 
 (defun handle-indentation-cache-request (connection request)
   (dcase request
@@ -3654,7 +3605,8 @@ belonging to PACKAGE."
       (cond (force
              (do-all-symbols (symbol)
                (consider symbol)))
-            (t
+            ((package-name package) ; don't try to iterate over a
+                                    ; deleted package.
              (do-symbols (symbol package)
                (when (eq (symbol-package symbol) package)
                  (consider symbol)))))
