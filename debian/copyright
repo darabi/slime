@@ -18,28 +18,89 @@ Copyright:
 
 These files with a different license are:
 
+GPL-v3 or same as Emacs:
+
+	contrib/bridge.el
+	;;; Copyright (C) 1991 Chris McConnell, ccm@cs.cmu.edu
+
+        contrib/inferior-slime.el
+        ;; Author: Luke Gorrie  <luke@synap.se>
+
+        contrib/slime-cl-indent.el
+        ;; Copyright (C) 1987, 2000-2011 Free Software Foundation, Inc.
+
+        contrib/slime-macrostep.el
+        ;; Authors: Luís Oliveira <luismbo@gmail.com>
+        ;;          Jon Oddie <j.j.oddie@gmail.com
+
+        contrib/slime-motd.el
+
+        contrib/slime-repl.el
+        ;; Original Author: Helmut Eller
+        ;; Contributors: too many to mention
+
+        contrib/slime-scheme.el
+        ;; Authors: Matthias Koeppe  <mkoeppe@mail.math.uni-magdeburg.de>
+
+        contrib/swank-goo.goo
+        ;;; Copyright (C) 2005  Helmut Eller
+
+        contrib/swank-jolt.k
+        ;; Copyright (C) 2008  Helmut Eller
+
+        contrib/swank-kawa.scm
+        ;;; Copyright (C) 2007  Helmut Eller
+
+        contrib/swank-mit-scheme.scm
+        ;; Copyright (C) 2008  Helmut Eller
+
+        lib/cl-lib.el
+        ;; Copyright (C) 2012, 2013, 2014  Free Software Foundation, Inc.
+
+        lib/ert.el
+        lib/ert-x.el
+        ;; Copyright (C) 2007, 2008, 2010 Free Software Foundation, Inc.
+
+        lib/macrostep.el
+        ;; Copyright (C) 2012-2015 Jon Oddie <j.j.oddie@gmail.com>
+
+	On Debian systems, the complete text of the GNU General Public License
+	version 2 can be found in `/usr/share/common-licenses/GPL-3'.
+
 GPL-v2:
 
-	swank-clisp.lisp
+	swank/swank-clisp.lisp
 	;;;; Copyright (C) 2003, 2004 W. Jenkner, V. Sedach
 	
-	bridge.el
-	;;; Copyright (C) 1991 Chris McConnell, ccm@cs.cmu.edu  
-	
-	hyperspec.el
+	lib/hyperspec.el
 	;; Copyright 1997 Naggum Software
 	;; Author: Erik Naggum <erik@naggum.no>
 	
 	slime.el
 	;;     Copyright (C) 2003  Eric Marsden, Luke Gorrie, Helmut Eller
-	;;     Copyright (C) 2004  Luke Gorrie, Helmut Eller
+	;;     Copyright (C) 2004,2005,2006  Luke Gorrie, Helmut Eller
+        ;;     Copyright (C) 2007,2008,2009  Helmut Eller, Tobias C. Rittweiler
+
+        slime-autoloads.el
+        ;; Copyright (C) 2007  Helmut Eller
+
+        slime-tests.el
+        ;;     Copyright (C) 2003  Eric Marsden, Luke Gorrie, Helmut Eller
+        ;;     Copyright (C) 2004,2005,2006  Luke Gorrie, Helmut Eller
+        ;;     Copyright (C) 2007,2008,2009  Helmut Eller, Tobias C. Rittweiler
+
+        contrib/swank-media.lisp
+        ;; Authors: Christophe Rhodes <csr21@cantab.net>
 	
-	On Debian systems, the complete text of the GNU General
-	Public License can be found in `/usr/share/common-licenses/GPL-2'.
+	On Debian systems, the complete text of the GNU General Public License
+	version 2 can be found in `/usr/share/common-licenses/GPL-2'.
 
 LLGPL:
 
-	swank-openmcl.lisp
+        swank/swank-ccl.lisp
+        ;;; Copyright (C) 2003, James Bielman  <jamesjb@jamesjb.com>
+
+	swank/swank-openmcl.lisp
 	;;; Copyright (C) 2003, James Bielman  <jamesjb@jamesjb.com>
 
         ;;; This program is licensed under the terms of the Lisp Lesser GNU
@@ -143,3 +204,18 @@ BSD-like:
 	;;;    distribution.
 	;;;
 
+MIT:
+        contrib/swank-sprof.lisp
+        ;; Authors: Juho Snellman
+
+Other:
+
+        swank/match.lisp
+        ;; Copyright 1990   Stephen Adams
+        ;;
+        ;; You are free to copy, distribute and make derivative works of this
+        ;; source provided that this copyright notice is displayed near the
+        ;; beginning of the file.  No liability is accepted for the
+        ;; correctness or performance of the code.  If you modify the code
+        ;; please indicate this fact both at the place of modification and in
+        ;; this copyright message.
