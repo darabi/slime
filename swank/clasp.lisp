@@ -325,7 +325,8 @@
     (function (ext:compiled-function-name f))))
 
 ;; FIXME
-(defimplementation macroexpand-all (form)
+(defimplementation macroexpand-all (form &optional env)
+  (declare (ignore env))
   (macroexpand form))
 
 (defimplementation describe-symbol-for-emacs (symbol)
@@ -461,26 +462,14 @@
       x
       (function-name x))))
 
-(defun function-position (fun)
-  (let* ((source-pos-info (core:function-source-pos-info fun)))
-    (when source-pos-info
-      (let* ((real-position (core:source-pos-info-filepos source-pos-info))
-             (sfi (core:source-file-info source-pos-info))
-             (real-pathname (core:source-file-info-pathname sfi))
-             (spoofed-namestring (core:source-file-info-source-debug-namestring sfi))
-             (spoofed-offset (core:source-file-info-source-debug-offset sfi))
-             (position (+ real-position spoofed-offset)))
-        (make-file-location spoofed-namestring position)))))
-
-(defun frame-function (frame)
-  (let* ((x (first frame))
-         fun position)
+(defun frame-function (frame-number)
+  (let ((x (first (elt *backtrace* frame-number))))
     (etypecase x
-      (symbol (and (fboundp x)
-                   (setf fun (fdefinition x)
-                         position (function-position fun))))
-      (function (setf fun x position (function-position x))))
-    (values fun position)))
+      (symbol
+       (and (fboundp x)
+            (fdefinition x)))
+      (function
+       x))))
 
 (defimplementation print-frame (frame stream)
   (format stream "(~s~{ ~s~})" (function-name (first frame))
@@ -490,7 +479,7 @@
           nil))
 
 (defimplementation frame-source-location (frame-number)
-  (nth-value 1 (frame-function (elt *backtrace* frame-number))))
+  (source-location (frame-function frame-number)))
 
 #+clasp-working
 (defimplementation frame-catch-tags (frame-number)
@@ -524,7 +513,7 @@
 
 #+clasp-working
 (defimplementation disassemble-frame (frame-number)
-  (let ((fun (frame-function (elt *backtrace* frame-number))))
+  (let ((fun (frame-function frame-number)))
     (disassemble fun)))
 
 (defimplementation eval-in-frame (form frame-number)
@@ -550,9 +539,6 @@
 
 ;;;; Definitions
 
-(defvar +TAGS+ (namestring
-                (merge-pathnames "TAGS" (translate-logical-pathname "SYS:"))))
-
 (defun make-file-location (file file-position)
   ;; File positions in CL start at 0, but Emacs' buffer positions
   ;; start at 1. We specify (:ALIGN T) because the positions comming
@@ -566,12 +552,6 @@
   (make-location `(:buffer ,buffer-name)
                  `(:offset ,start-position ,offset)
                  `(:align t)))
-
-(defun make-TAGS-location (&rest tags)
-  (make-location `(:etags-file ,+TAGS+)
-                 `(:tag ,@tags)))
-
-
 
 (defimplementation find-definitions (name)
   (let ((annotations (core:get-annotation name 'si::location :all)))
@@ -640,41 +620,9 @@
 (deftype c-function ()
   `(satisfies c-function-p))
 
-(defun assert-source-directory ()
-  (unless (probe-file #P"SYS:")
-    (error "CLASP's source directory ~A does not exist. ~
-            You can specify a different location via the environment ~
-            variable `CLASPSRCDIR'."
-           (namestring (translate-logical-pathname #P"SYS:"))))) 
-
-(defun assert-TAGS-file ()
-  (unless (probe-file +TAGS+)
-    (error "No TAGS file ~A found. It should have been installed with CLASP."
-           +TAGS+)))
-
-(defun package-names (package)
-  (cons (package-name package) (package-nicknames package)))
-
 (defun source-location (object)
   (converting-errors-to-error-location
    (typecase object
-     (c-function
-      (assert-source-directory)
-      (assert-TAGS-file)
-      (let ((lisp-name (function-name object)))
-        (assert lisp-name)
-        (multiple-value-bind (flag c-name) (si:mangle-name lisp-name t)
-          (assert flag)
-          ;; In CLASP's code base sometimes the mangled name is used
-          ;; directly, sometimes CLASP's DPP magic of @SI::SYMBOL or
-          ;; @EXT::SYMBOL is used. We cannot predict here, so we just
-          ;; provide several candidates.
-          (apply #'make-TAGS-location
-                 c-name
-                 (loop with s = (symbol-name lisp-name)
-                       for p in (package-names (symbol-package lisp-name))
-                       collect (format nil "~A::~A" p s)
-                       collect (format nil "~(~A::~A~)" p s))))))
      (function
       (multiple-value-bind (file pos) (ext:compiled-function-file object)
         (cond ((not file)
@@ -688,11 +636,7 @@
      (method
       ;; FIXME: This will always return NIL at the moment; CLASP does not
       ;; store debug information for methods yet.
-      (source-location (clos:method-function object)))
-     ((member nil t)
-      (multiple-value-bind (flag c-name) (si:mangle-name object)
-        (assert flag)
-        (make-TAGS-location c-name))))))
+      (source-location (clos:method-function object))))))
 
 (defimplementation find-source-location (object)
   (or (source-location object)

@@ -12,8 +12,8 @@
 @end direntry
 @c %**end of header
 
-@set EDITION 2.15
-@set SLIMEVER 2.15
+@set EDITION 2.17
+@set SLIMEVER 2.17
 @set UPDATED @today{}
 @set TITLE SLIME User Manual
 @settitle @value{TITLE}, version @value{EDITION}
@@ -233,6 +233,7 @@ Contributed Packages
 * SLIME Trace Dialog::
 * slime-sprof::
 * slime-fancy::
+* Quicklisp::
 
 REPL: the ``top level''
 
@@ -1124,18 +1125,24 @@ Recompile all definitions.
 @cindex Macros
 
 @table @kbd
-@kbditem{C-c C-m, slime-macroexpand-1}
-Macroexpand the expression at point once.  If invoked with a prefix
-argument, use macroexpand instead of macroexpand-1.
+@kbditem{C-c C-m, slime-expand-1}
+Macroexpand (or compiler-macroexpand) the expression starting at point
+once.  If invoked with a prefix argument use macroexpand instead or
+macroexpand-1 (or compiler-macroexpand instead of
+compiler-macroexpand-1).
+
+@cmditem{slime-macroexpand-1}
+Macroexpand the expression starting at point once.  If invoked with a
+prefix argument, use macroexpand instead of macroexpand-1.
 
 @kbditem{C-c M-m, slime-macroexpand-all}
-Fully macroexpand the expression at point.
+Fully macroexpand the expression starting at point.
 
 @cmditem{slime-compiler-macroexpand-1}
-Display the compiler-macro expansion of sexp at point.
+Display the compiler-macro expansion of sexp starting at point.
 
 @cmditem{slime-compiler-macroexpand}
-Repeatedy expand compiler macros of sexp at point.
+Repeatedy expand compiler macros of sexp starting at point.
 
 @end table
 
@@ -2153,6 +2160,7 @@ particular packages do.
 * slime-sprof::
 * SLIME Enhanced M-.::
 * slime-fancy::
+* Quicklisp::
 @end menu
 
 @node Loading Contribs
@@ -2422,7 +2430,7 @@ Quit all Lisps and close all @SLIME{} buffers.
 @section Multiple REPLs
 
 The @code{slime-mrepl} package adds support for multiple listener
-buffers.  The command @kbd{M-x slime-open-listener} creates a new
+buffers.  The command @kbd{M-x slime-new-mrepl} creates a new
 buffer.  In a multi-threaded Lisp, each listener is associated with a
 separate thread.  In a single-threaded Lisp it's also possible to
 create multiple listener buffers but the commands are executed
@@ -3186,6 +3194,21 @@ declared with @code{flet} and @code{labels}, via
 
 @code{slime-fancy} is a meta package which loads a combination of the
 most popular packages.
+
+@node Quicklisp
+@section Quicklisp
+The package @code{slime-quicklisp} adds support for loading Quicklisp
+systems in the REPL buffer.  In order for this to work, Quicklisp
+should have already been loaded in the Lisp implementation.  Refer
+to @url{https://www.quicklisp.org/} for Quicklisp installation
+details.
+
+The package installs the following REPL shortcuts (@pxref{Shortcuts}):
+
+@table @kbd
+@item quicklisp-quickload (aka ql)
+Load a Quicklisp system.
+@end table
 
 @c -----------------------
 @node Credits
