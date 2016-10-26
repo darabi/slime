@@ -2,6 +2,7 @@ slime (2:2.18-1) unstable; urgency=low
 
   * New upstream.
   * Updated for emacs25; closes: #841933.
+  * Debhelper compatibility level increased to 9.
 
  -- Milan Zamazal <pdm@debian.org>  Wed, 26 Oct 2016 21:06:20 +0200
 

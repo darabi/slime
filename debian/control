@@ -3,7 +3,7 @@ Section: lisp
 Priority: optional
 Maintainer: Debian Common Lisp Team <pkg-common-lisp-devel@lists.alioth.debian.org>
 Uploaders: Peter Van Eynde <pvaneynd@debian.org>, Milan Zamazal <pdm@debian.org>
-Build-Depends: debhelper (>= 7)
+Build-Depends: debhelper (>= 9)
 Build-Depends-Indep: dh-lisp, texlive-generic-recommended, texlive-extra-utils, texlive, texinfo, texlive-latex-extra
 Standards-Version: 3.9.8
 Homepage: http://common-lisp.net/project/slime/
