@@ -13,7 +13,7 @@ Vcs-Browser: http://git.debian.org/?p=pkg-common-lisp/slime.git;a=summary
 Package: slime
 Architecture: all
 Depends: emacsen-common (>= 2.0.8), ${misc:Depends}
-Recommends: cl-swank (= ${source:Version}), info | info-browser, emacs24 (>= 24.3) | emacs24-lucid (>= 24.3) | emacs24-nox (>= 24.3) | emacs-snapshot | xemacs21
+Recommends: cl-swank (= ${source:Version}), info | info-browser, emacs25 | emacs24 (>= 24.3) | emacs24-lucid (>= 24.3) | emacs24-nox (>= 24.3) | emacs-snapshot | xemacs21
 Description: Superior LISP Interaction Mode for Emacs
  SLIME is the Superior Lisp Interaction Mode for Emacs.
  .
