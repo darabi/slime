@@ -1,3 +1,47 @@
+slime (2:2.19-35-g6ee92c9~xenial+1) xenial; urgency=medium
+
+  New upstream release (plus hu.dwim patches):
+  * Release 2.19.
+  * Autoload slime-selector
+  * Call slime-setup when slime.el is loaded
+  * Function `create-server` now accepts optional `interface` argument.
+  * When running on SBCL swank can be bound to IPv6 interface.
+  * Correct the customization type of lisp-loop-body-forms-indentation
+  * Adjust for changes in SBCL.
+  * Gitignore *.abcl
+  * swank/match: remove ! from symbol names
+  * swank/abcl: improve source locations
+  * Fix bug in swank/backend:compiler-macroexpand-1
+  * swank.asd: pass :reload t to SWANK-LOADER::INIT
+  * Fix enriched arglists on SBCL for sb-assem:inst.
+  * Remove call to ASDF::OPERATION-FORCED (#350)
+  * Don't reload contribs each time a lisp starts up.
+  * Added emacs-inspect for core:cxx-object
+  * Merge pull request #331 from fice-t/master
+  * Use the eldoc-highlight-function-argument face for consistency (#335)
+  * clasp: use the new source location facility.
+  * Remove slime-parse-extended-operator-name
+  * Add missing cl- prefixes to cl-lib functions
+  * Fix byte-compiler warnings
+  * slime-repl: bind TAB to self-insert-command
+  * Extend load-path with contribs sooner
+  * sbcl: Record the package active during C-c C-c.
+  * Accidentally commented out slime-macrostep from slime-fancy.
+  * Make calling slime-setup unnecessary
+  * README.md: "setup" is a noun, not a verb
+  * slime-version: check if we're opening slime.el
+  * Improve source location handling for ACL >= 10.0
+  * CONTRIBUTING.md: add note about commit messages
+  * Remove ChangeLog files
+  * Build contributors.texi using Git
+  * Use slime-version in slime-{banner,repl}
+  * Derive SWANK protocol version from slime-version
+  * Add slime-version variable
+  * Remove the slime-motd contrib
+  * README.md: change (setf slime-contribs) to slime-setup.
+
+ -- Kambiz Darabi <darabi@m-creations.net>  Sun, 12 Feb 2017 21:12:06 +0100
+
 slime (2:2.18-1) unstable; urgency=low
 
   * New upstream.
