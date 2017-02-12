@@ -1,14 +1,26 @@
-Index: slime/slime.el
-===================================================================
---- slime.orig/slime.el
-+++ slime/slime.el
-@@ -150,8 +150,7 @@ Return nil if the ChangeLog file cannot
-       date)))
+--- a/slime.el
++++ b/slime.el
+@@ -96,15 +96,14 @@
+ (defvar slime-version nil
+   "The version of SLIME that you're using.")
+ (setq slime-version
+-      (eval-when-compile
+-       (lm-version
+-        (cl-find "slime.el"
+-                 (remove nil
+-                         (list load-file-name
+-                               (when (boundp 'byte-compile-current-file)
+-                                 byte-compile-current-file)))
+-                 :key #'file-name-nondirectory
+-                 :test #'string-equal))))
++      (lm-version
++       (cl-find "slime.el"
++                (remove nil
++                        (list load-file-name
++                              (when (boundp 'byte-compile-current-file)
++                                byte-compile-current-file)))
++                :key #'file-name-nondirectory
++                :test #'string-equal)))
  
- (defvar slime-protocol-version nil)
--(setq slime-protocol-version
--      (eval-when-compile (slime-changelog-date)))
-+(setq slime-protocol-version (slime-changelog-date))
- 
- 
- ;;;; Customize groups
+ (defvar slime-lisp-modes '(lisp-mode))
+ (defvar slime-contribs nil

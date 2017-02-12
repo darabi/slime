@@ -1,24 +1,5 @@
-Index: slime/slime.el
-===================================================================
---- slime.orig/slime.el
-+++ slime/slime.el
-@@ -128,11 +128,7 @@ CONTRIBS is a list of contrib packages t
- 
- (eval-and-compile
-   (defun slime--changelog-file-name ()
--    (expand-file-name "ChangeLog"
--                      (if (and (boundp 'byte-compile-current-file)
--                               byte-compile-current-file)
--                          (file-name-directory byte-compile-current-file)
--                          slime-path)))
-+    "/usr/share/doc/slime/changelog")
- 
-   (defun slime-changelog-date (&optional interactivep)
-     "Return the datestring of the latest entry in the ChangeLog file.
-Index: slime/swank-loader.lisp
-===================================================================
---- slime.orig/swank-loader.lisp
-+++ slime/swank-loader.lisp
+--- a/swank-loader.lisp
++++ b/swank-loader.lisp
 @@ -17,6 +17,10 @@
  ;;   (setq swank-loader::*fasl-directory* "/tmp/fasl/")
  ;;   (swank-loader:init)
@@ -30,28 +11,12 @@ Index: slime/swank-loader.lisp
  (cl:defpackage :swank-loader
    (:use :cl)
    (:export :init
-@@ -136,7 +140,7 @@ operating system, and hardware architect
+@@ -139,7 +143,7 @@
  (defun slime-version-string ()
    "Return a string identifying the SLIME version.
  Return nil if nothing appropriate is available."
--  (with-open-file (s (merge-pathnames "ChangeLog" *source-directory*)
-+  (with-open-file (s "/usr/share/doc/cl-swank/changelog" 
+-  (with-open-file (s (merge-pathnames "slime.el" *source-directory*)
++  (with-open-file (s "/usr/share/doc/cl-swank/changelog"
                       :if-does-not-exist nil)
-     (and s (symbol-name (read s)))))
- 
-@@ -153,10 +157,11 @@ Return nil if nothing appropriate is ava
- 
- (defun binary-pathname (src-pathname binary-dir)
-   "Return the pathname where SRC-PATHNAME's binary should be compiled."
--  (let ((cfp (compile-file-pathname src-pathname)))
--    (merge-pathnames (make-pathname :name (pathname-name cfp)
--                                    :type (pathname-type cfp))
--                     binary-dir)))
-+  (declare (ignore binary-dir))
-+  (let ((cfp (compile-file-pathname src-pathname)))    
-+    (merge-pathnames (make-pathname 
-+                      :directory `(:relative "swank" "fasl" ,(unique-dir-name)))
-+                     (asdf:apply-output-translations cfp))))
- 
- (defun handle-swank-load-error (condition context pathname)
-   (fresh-line *error-output*)
+     (loop with prefix = ";; Version: "
+           for line = (read-line s nil :eof)
