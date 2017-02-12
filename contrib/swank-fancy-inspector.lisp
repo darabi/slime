@@ -9,28 +9,145 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (swank-require :swank-util))
 
+(defvar *inspector-lookup-hooks* '(default-inspector-lookup-hook)
+  "A list of funcallables of one argument that provide various user defined definitions when inspecting in DWIM mode.")
+
+(defun default-inspector-lookup-hook (form)
+  (let ((result '())
+        (valid-function-name-p (valid-function-name-p form)))
+    (when (and (symbolp form)
+               (boundp form)
+               (not (keywordp form)))
+      (push (symbol-value form) result))
+    (when (and valid-function-name-p
+               (fboundp form))
+      (push (fdefinition form) result))
+    (when (and (symbolp form)
+               (find-class form nil))
+      (push (find-class form) result))
+    (when (and (and (consp form)
+                    (not valid-function-name-p))
+               (valid-function-name-p (first form))
+               (fboundp (first form)))
+      (push (eval form) result))
+    (when (and (or (symbolp form)
+                   (stringp form))
+               (find-package form))
+      (push (find-package form) result))
+    (values result (not (null result)))))
+
+;; redefine the original
+(defslimefun init-inspector (string &key (reset t) (mode :eval))
+  (check-type mode (member :as-is :eval :dwim))
+  (with-buffer-syntax ()
+    (with-retry-restart (:msg "Retry SLIME inspection request.")
+      (when reset
+        (reset-inspector))
+      (let* ((dwim-mode? (eq mode :dwim))
+             (form (block reading
+                     (handler-bind
+                         ((error (lambda (e)
+                                   (declare (ignore e))
+                                   (when dwim-mode?
+                                     (return-from reading 'nothing)))))
+                       (read-from-string string nil 'nothing))))
+             (value nil))
+        (unless (eq form 'nothing)
+          (setf value (ecase mode
+                        (:dwim
+                         (let ((things (loop
+                                          :for hook :in *inspector-lookup-hooks*
+                                          :for (result foundp) = (multiple-value-list
+                                                                  (funcall hook form))
+                                          :when foundp
+                                          :append (if (consp result)
+                                                      result
+                                                      (list result)))))
+                           (if (rest things)
+                               things
+                               (first things))))
+                        (:eval (eval form))
+                        (:as-is form)))
+          (when (and dwim-mode?
+                     form
+                     value)
+            ;; we've got a dwim match, so push the form to the
+            ;; inspector stack, so you can go back to it with
+            ;; slime-inspector-pop (bound to the key 'l') in the rare
+            ;; cases when dwim misses the intention
+            (inspect-object form))
+          (inspect-object (if dwim-mode?
+                              (or value form)
+                              value)))))))
+
+(defmacro set-value-inspector-action ((var) &body body)
+  `(lambda ()
+     (with-simple-restart
+         (abort "Abort setting value")
+       (let ((value-string (eval-in-emacs
+                            `(condition-case c
+                                 (slime-read-from-minibuffer (format "Set to (evaluated in %s): "
+                                                                     (slime-current-package)))
+                               (quit nil)))))
+         (unless (equal value-string "")
+           (let ((,var (eval (read-from-string value-string))))
+             ,@body))))))
+
+;; redefine the original
+(defun inspect-cons (cons)
+  (list
+   :title "A cons cell"
+   :type nil
+   :content (append
+             `("(" (:value ,(car cons)) " . " (:value ,(cdr cons)) ")")
+             `((:newline))
+             `((:action "[set car]"
+               ,(set-value-inspector-action (value)
+                  (setf (car cons) value)))
+               (:newline)
+               (:action "[set cdr]"
+                 ,(set-value-inspector-action (value)
+                    (setf (cdr cons) value)))))))
+
 (defmethod emacs-inspect ((symbol symbol))
   (let ((package (symbol-package symbol)))
     (multiple-value-bind (_symbol status)
         (and package (find-symbol (string symbol) package))
       (declare (ignore _symbol))
-      (append
-        (label-value-line "Its name is" (symbol-name symbol))
+      (list
+       :title (concatenate 'string "A symbol: "
+                           (when package
+                             (package-name package))
+                           (when package
+                             (ecase status
+                               (:external ":")
+                               (:internal "::")))
+                           (symbol-name symbol))
+       :type nil
+       :content
+       (append
+        (append
+         (when (eq status :internal)
+           `((:action "[export it]"
+              ,(lambda () (export symbol package)))
+             (:newline)))
+         `((:action "[unintern it]"
+            ,(lambda () (unintern symbol package)))
+           (:newline)
+           (:newline)))
         ;;
-        ;; Value
-        (cond ((boundp symbol)
-               (append
-                (label-value-line (if (constantp symbol)
-                                      "It is a constant of value"
-                                      "It is a global variable bound to")
-                                  (symbol-value symbol) :newline nil)
-                ;; unbinding constants might be not a good idea, but
-                ;; implementations usually provide a restart.
-                `(" " (:action "[unbind]"
-                               ,(lambda () (makunbound symbol))))
-                '((:newline))))
-              (t '("It is unbound." (:newline))))
-        (docstring-ispec "Documentation" symbol 'variable)
+        (when (boundp symbol)
+          (append
+           (label-value-line (if (constantp symbol)
+                                 "It is a constant of value"
+                                 "It is a global variable bound to")
+                             (symbol-value symbol)
+                             :display-nil-value t :newline nil)
+           ;; unbinding constants might be not a good idea, but
+           ;; implementations usually provide a restart.
+           `(" " (:action "[makunbound]" ,(lambda () (makunbound symbol)))
+             (:newline))))
+        (docstring-ispec symbol :kind 'variable)
         (multiple-value-bind (expansion definedp) (macroexpand symbol)
           (if definedp
               (label-value-line "It is a symbol macro with expansion"
@@ -39,25 +156,27 @@
         ;; Function
         (if (fboundp symbol)
             (append (if (macro-function symbol)
-                        `("It a macro with macro-function: "
+                        `((:label "It names a macro with macro-function: ")
                           (:value ,(macro-function symbol)))
-                        `("It is a function: "
+                        `((:label "It names a function: ")
                           (:value ,(symbol-function symbol))))
                     `(" " (:action "[unbind]"
                                    ,(lambda () (fmakunbound symbol))))
-                    `((:newline)))
-            `("It has no function value." (:newline)))
-        (docstring-ispec "Function documentation" symbol 'function)
+                    `((:newline))))
+        (docstring-ispec symbol :label "Function Documentation" :kind 'function)
+
+        ;;
+        ;; Compiler macro
         (when (compiler-macro-function symbol)
-            (append
-             (label-value-line "It also names the compiler macro"
-                               (compiler-macro-function symbol) :newline nil)
-             `(" " (:action "[remove]"
-                            ,(lambda ()
-                               (setf (compiler-macro-function symbol) nil)))
-                   (:newline))))
-        (docstring-ispec "Compiler macro documentation"
-                         symbol 'compiler-macro)
+          (append
+           (label-value-line "It also names the compiler macro"
+                             (compiler-macro-function symbol) :newline nil)
+           `(" " (:action "[remove]"
+                          ,(lambda ()
+                              (setf (compiler-macro-function symbol) nil)))
+                 (:newline))))
+        (docstring-ispec symbol :label "Compiler Macro Documentation" :kind 'compiler-macro)
+
         ;;
         ;; Package
         (if package
@@ -75,11 +194,11 @@
             '("It is a non-interned symbol." (:newline)))
         ;;
         ;; Plist
-        (label-value-line "Property list" (symbol-plist symbol))
+        (label-value-line "Property list" (symbol-plist symbol) :hide-when-nil t)
         ;;
         ;; Class
         (if (find-class symbol nil)
-            `("It names the class "
+            `((:label "It names the class ")
               (:value ,(find-class symbol) ,(string symbol))
               " "
               (:action "[remove]"
@@ -88,8 +207,12 @@
         ;;
         ;; More package
         (if (find-package symbol)
-            (label-value-line "It names the package" (find-package symbol)))
-        (inspect-type-specifier symbol)))))
+            (append
+             (label-value-line "It names the package" (find-package symbol)
+                               :newline nil)
+             `(" " (:action "[delete package]"
+                            ,(lambda () (delete-package symbol))))))
+        (inspect-type-specifier symbol))))))
 
 #-sbcl
 (defun inspect-type-specifier (symbol)
@@ -115,7 +238,7 @@
         (format nil "It names a ~@[primitive~* ~]type-specifier."
                 (eq kind :primitive))
         '(:newline))
-       (docstring-ispec "Type-specifier documentation" symbol 'type)
+       (docstring-ispec  symbol :label "Type-specifier documentation" :kind 'type)
        (unless (eq t fun)
          (let ((arglist (arglist fun)))
            (append
@@ -133,29 +256,35 @@
                 (list "Type-specifier expansion: "
                       (princ-to-string expansion)))))))))))
 
-(defun docstring-ispec (label object kind)
+(defun docstring-ispec (object &key (label "Documentation") (kind t))
   "Return a inspector spec if OBJECT has a docstring of kind KIND."
-  (let ((docstring (documentation object kind)))
+  (let ((docstring (documentation object kind))
+        (label-ispec `(:label ,(concatenate 'string (string label) ": "))))
     (cond ((not docstring) nil)
-          ((< (+ (length label) (length docstring))
-              75)
-           (list label ": " docstring '(:newline)))
+          ((and (< (+ (length label) (length docstring) 2) (or *print-right-margin* 75))
+                (not (find #\Newline docstring)))
+           `(,label-ispec ,docstring (:newline)))
           (t
-           (list label ":" '(:newline) "  " docstring '(:newline))))))
+           `(,label-ispec (:newline) "  " ,docstring (:newline))))))
 
 (unless (find-method #'emacs-inspect '() (list (find-class 'function)) nil)
   (defmethod emacs-inspect ((f function))
     (inspect-function f)))
 
 (defun inspect-function (f)
-  (append
-   (label-value-line "Name" (function-name f))
-   `("Its argument list is: "
-     ,(inspector-princ (arglist f)) (:newline))
-   (docstring-ispec "Documentation" f t)
-   (if (function-lambda-expression f)
-       (label-value-line "Lambda Expression"
-                         (function-lambda-expression f)))))
+  (list
+   :title "A function"
+   :content
+   (append
+    (label-value-line*
+     ("Name" (function-name f))
+     ("Argument list" (arglist f)))
+    (docstring-ispec f)
+    (when (function-lambda-expression f)
+      (label-value-line "Lambda Expression"
+                        (function-lambda-expression f)))
+    (when (typep f 'standard-object)
+      (all-slots-for-inspector f)))))
 
 (defun method-specializers-for-inspect (method)
   "Return a \"pretty\" list of the method's specializers. Normal
@@ -278,10 +407,14 @@ See `methods-by-applicability'.")
 (defvar *inspector-slots-default-grouping* :all
   "Accepted values: :inheritance and :all")
 
+(defvar *skip-slot-value-errors-while-inspecting* nil)
+
 (defgeneric all-slots-for-inspector (object))
 
 (defmethod all-slots-for-inspector ((object standard-object))
-  (let* ((class           (class-of object))
+  (let* ((*skip-slot-value-errors-while-inspecting*
+          *skip-slot-value-errors-while-inspecting*)
+         (class           (class-of object))
          (direct-slots    (swank-mop:class-direct-slots class))
          (effective-slots (swank-mop:class-slots class))
          (longest-slot-name-length
@@ -416,15 +549,34 @@ See `methods-by-applicability'.")
                        ,slot-name)
       collect (padding-for slot-name)
       collect " = "
-      collect (slot-value-for-inspector class object effective-slot)
+      appending (slot-value-for-inspector class object effective-slot)
       collect '(:newline))))
 
 (defgeneric slot-value-for-inspector (class object slot)
   (:method (class object slot)
     (let ((boundp (swank-mop:slot-boundp-using-class class object slot)))
       (if boundp
-          `(:value ,(swank-mop:slot-value-using-class class object slot))
-          "#<unbound>"))))
+          `((:value ,(swank-mop:slot-value-using-class class object slot)))
+          '("#<unbound>"))))
+  (:method :around (class object slot)
+    (flet ((skip ()
+             (return-from slot-value-for-inspector '("#<svuc skipped>"))))
+      (restart-case
+          (handler-bind
+              ((serious-condition (lambda (error)
+                                    (declare (ignore error))
+                                    (when *skip-slot-value-errors-while-inspecting*
+                                      (skip)))))
+            (call-next-method))
+        (continue ()
+          :report (lambda (stream)
+                    (format stream "Skip inspecting slot value of ~S" (swank-mop:slot-definition-name slot)))
+          (skip))
+        (ignore-slot-value-errors ()
+          :report (lambda (stream)
+                    (format stream "Skip inspecting all slots that have error in their SVUC"))
+          (setf *skip-slot-value-errors-while-inspecting* t)
+          (skip))))))
 
 (defun slot-home-class-using-class (slot class)
   (let ((slot-name (swank-mop:slot-definition-name slot)))
@@ -455,7 +607,7 @@ See `methods-by-applicability'.")
     (append
       (lv "Name" (swank-mop:generic-function-name gf))
       (lv "Arguments" (swank-mop:generic-function-lambda-list gf))
-      (docstring-ispec "Documentation" gf t)
+      (docstring-ispec gf)
       (lv "Method class" (swank-mop:generic-function-method-class gf))
       (lv "Method combination"
           (swank-mop:generic-function-method-combination gf))
@@ -482,7 +634,7 @@ See `methods-by-applicability'.")
                        (swank-mop:method-generic-function method)))))
           '("Method without a generic function"))
       (:newline)
-      ,@(docstring-ispec "Documentation" method t)
+      ,@(docstring-ispec method)
       "Lambda List: " (:value ,(swank-mop:method-lambda-list method))
       (:newline)
       "Specializers: " (:value ,(swank-mop:method-specializers method)
@@ -570,27 +722,17 @@ See `methods-by-applicability'.")
     ,@(all-slots-for-inspector class)))
 
 (defmethod emacs-inspect ((slot swank-mop:standard-slot-definition))
-  `("Name: "
-    (:value ,(swank-mop:slot-definition-name slot))
-    (:newline)
-    ,@(when (swank-mop:slot-definition-documentation slot)
-        `("Documentation:" (:newline)
-                           (:value ,(swank-mop:slot-definition-documentation
-                                     slot))
-                           (:newline)))
-    "Init args: "
-    (:value ,(swank-mop:slot-definition-initargs slot))
-    (:newline)
-    "Init form: "
-    ,(if (swank-mop:slot-definition-initfunction slot)
-         `(:value ,(swank-mop:slot-definition-initform slot))
-         "#<unspecified>")
-    (:newline)
-    "Init function: "
-    (:value ,(swank-mop:slot-definition-initfunction slot))
-    (:newline)
-    ,@(all-slots-for-inspector slot)))
-
+  (list
+   :title "A slot"
+   :content
+   (append
+    (label-value-line*
+     ("Name"          (swank-mop:slot-definition-name slot))
+     ("Documentation" (swank-mop:slot-definition-documentation slot))
+     ("Initargs"      (swank-mop:slot-definition-initargs slot))
+     ("Initform"      (swank-mop:slot-definition-initform slot))
+     ("Initfunction"  (swank-mop:slot-definition-initfunction slot)))
+    (all-slots-for-inspector slot))))
 
 ;; Wrapper structure over the list of symbols of a package that should
 ;; be displayed with their respective classification flags. This is
@@ -913,46 +1055,63 @@ SPECIAL-OPERATOR groups."
                                                               zone))))))
 
 (defmethod emacs-inspect ((i integer))
-  (append
-   `(,(format nil "Value: ~D = #x~8,'0X = #o~O = #b~,,' ,8:B~@[ = ~E~]"
-	      i i i i (ignore-errors (coerce i 'float)))
-     (:newline))
-   (when (< -1 i char-code-limit)
-     (label-value-line "Code-char" (code-char i)))
-   (label-value-line "Integer-length" (integer-length i))
-   (ignore-errors
-    (label-value-line "Universal-time" (format-iso8601-time i t)))))
+  (list
+   :title "An integer"
+   :content
+   (flet ((value-part-coerced-to (type)
+            (let ((value (ignore-errors (coerce i type))))
+              (if value
+                  (format nil "~E" value)
+                  "<not representable>"))))
+     (label-value-line*
+      ("Decimal" (princ-to-string i) :splice-as-ispec t)
+      ("Hexadecimal" (format nil "#x~8,'0X" i) :splice-as-ispec t)
+      ("Octal" (format nil "#o~O" i) :splice-as-ispec t)
+      ("Binary" (format nil "#b~,,' ,8:B" i) :splice-as-ispec t)
+      ("As float" (value-part-coerced-to 'float) :splice-as-ispec t)
+      ("As double-float" (value-part-coerced-to 'double-float) :splice-as-ispec t)
+      (@ '((:newline)))
+      ("Integer-length" (princ-to-string (integer-length i)) :splice-as-ispec t)
+      (@ (when (< 0 i (expt 2 32))
+           (label-value-line "Universal-time" (format-iso8601-time i t))))
+      (@ (when (< -1 i char-code-limit)
+           `((:label "Code-char: ") ,(let ((*print-readably*)) (prin1-to-string (code-char i))))))))))
 
 (defmethod emacs-inspect ((c complex))
-  (label-value-line*
-   ("Real part" (realpart c))
-   ("Imaginary part" (imagpart c))))
+  (list
+   :title "A complex number"
+   :content
+   (label-value-line*
+    ("Real part" (realpart c))
+    ("Imaginary part" (imagpart c)))))
 
 (defmethod emacs-inspect ((r ratio))
-  (label-value-line*
-   ("Numerator" (numerator r))
-   ("Denominator" (denominator r))
-   ("As float" (float r))))
+  (list
+   :title "A non-integer ratio"
+   :content
+   (label-value-line*
+    ("Numerator" (princ-to-string (numerator r)) :splice-as-ispec t)
+    ("Denominator" (princ-to-string (denominator r)) :splice-as-ispec t)
+    ("As float" (float r)))))
 
 (defmethod emacs-inspect ((f float))
-  (cond
-    ((> f most-positive-long-float)
-     (list "Positive infinity."))
-    ((< f most-negative-long-float)
-     (list "Negative infinity."))
-    ((not (= f f))
-     (list "Not a Number."))
-    (t
-     (multiple-value-bind (significand exponent sign) (decode-float f)
-       (append
-	`("Scientific: " ,(format nil "~E" f) (:newline)
-			 "Decoded: "
-			 (:value ,sign) " * "
-			 (:value ,significand) " * "
-			 (:value ,(float-radix f)) "^"
-			 (:value ,exponent) (:newline))
-	(label-value-line "Digits" (float-digits f))
-	(label-value-line "Precision" (float-precision f)))))))
+  (list
+   :title "A floating point number"
+   :content
+   (cond
+     ((> f most-positive-long-float)
+      (list "Positive infinity."))
+     ((< f most-negative-long-float)
+      (list "Negative infinity."))
+     ((not (= f f))
+      (list "Not a Number."))
+     (t
+      (multiple-value-bind (significand exponent sign) (decode-float f)
+        (label-value-line*
+         ("Scientific" (format nil "~E" f) :splice-as-ispec t)
+         ("Decoded" (format nil "~A * ~A * ~A^~A" sign significand (float-radix f) exponent) :splice-as-ispec t)
+         ("Digits" (princ-to-string (float-digits f)) :splice-as-ispec t)
+         ("Precision" (princ-to-string (float-precision f)) :splice-as-ispec t)))))))
 
 (defun make-pathname-ispec (pathname position)
   `("Pathname: "

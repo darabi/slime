@@ -692,6 +692,8 @@ If PACKAGE is not specified, the home package of SYMBOL is used."
   "Default value of :dont-close argument to start-server and
   create-server.")
 
+(defparameter *loopback-interface* "127.0.0.1")
+
 (defun start-server (port-file &key (style *communication-style*)
                                     (dont-close *dont-close*))
   "Start the server and write the listen port number to PORT-FILE.
@@ -703,18 +705,22 @@ This is the entry point for Emacs."
 (defun create-server (&key (port default-server-port)
                         (style *communication-style*)
                         (dont-close *dont-close*)
+                        interface
                         backlog)
   "Start a SWANK server on PORT running in STYLE.
 If DONT-CLOSE is true then the listen socket will accept multiple
-connections, otherwise it will be closed after the first."
-  (setup-server port #'simple-announce-function
-                style dont-close backlog))
+connections, otherwise it will be closed after the first.
+
+Optionally, an INTERFACE could be specified and swank will bind
+the PORT on this interface. By default, interface is 127.0.0.1."
+  (let ((*loopback-interface* (or interface
+                                  *loopback-interface*)))
+    (setup-server port #'simple-announce-function
+                  style dont-close backlog)))
 
 (defun find-external-format-or-lose (coding-system)
   (or (find-external-format coding-system)
       (error "Unsupported coding system: ~s" coding-system)))
-
-(defparameter *loopback-interface* "127.0.0.1")
 
 (defmacro restart-loop (form &body clauses)
   "Executes FORM, with restart-case CLAUSES which have a chance to modify FORM's
@@ -1012,14 +1018,14 @@ The processing is done in the extent of the toplevel restart."
   "Handle an event triggered either by Emacs or within Lisp."
   (log-event "dispatch-event: ~s~%" event)
   (dcase event
-    ((:emacs-rex form package thread-id id)
+    ((:emacs-rex form package thread-id continuation-id)
      (let ((thread (thread-for-evaluation connection thread-id)))
        (cond (thread
               (add-active-thread connection thread)
-              (send-event thread `(:emacs-rex ,form ,package ,id)))
+              (send-event thread `(:emacs-rex ,form ,package ,continuation-id)))
              (t
-              (encode-message 
-               (list :invalid-rpc id
+              (encode-message
+               (list :invalid-rpc continuation-id
                      (format nil "Thread not found: ~s" thread-id))
                (current-socket-io))))))
     ((:return thread &rest args)
@@ -1508,14 +1514,19 @@ Emacs buffer."
                     (write-string ,msg  s))))
               (t msg)))))
 
-(defun to-string (object)
+(defun to-string (object &key length-limit)
   "Write OBJECT in the *BUFFER-PACKAGE*.
 The result may not be readable. Handles problems with PRINT-OBJECT methods
 gracefully."
   (with-buffer-syntax ()
     (let ((*print-readably* nil))
       (without-printing-errors (:object object :stream nil)
-        (prin1-to-string object)))))
+        (if length-limit
+            (call/truncated-output-to-string
+             length-limit
+             (lambda (stream)
+               (prin1 object stream)))
+            (prin1-to-string object))))))
 
 (defun from-string (string)
   "Read string in the *BUFFER-PACKAGE*"
@@ -3082,7 +3093,7 @@ DSPEC is a string and LOCATION a source location. NAME is a string."
   (parts (make-array 10 :adjustable t :fill-pointer 0))
   (actions (make-array 10 :adjustable t :fill-pointer 0))
   metadata-plist
-  content
+  title type content
   next previous)
 
 (defvar *istate* nil)
@@ -3111,32 +3122,98 @@ DSPEC is a string and LOCATION a source location. NAME is a string."
                               :verbose (cond (prev (istate.verbose prev))
                                              (t *inspector-verbose*)))))
     (setq *istate* istate)
-    (setf (istate.content istate) (emacs-inspect/istate istate))
+    (update-istate istate)
     (unless (find o *inspector-history*)
       (vector-push-extend o *inspector-history*))
     (let ((previous (istate.previous istate)))
       (if previous (setf (istate.next previous) istate)))
     (istate>elisp istate)))
 
-(defun emacs-inspect/istate (istate)
+(defun update-istate (istate)
   (with-bindings (if (istate.verbose istate)
                      *inspector-verbose-printer-bindings*
                      *inspector-printer-bindings*)
-    (emacs-inspect (istate.object istate))))
+    (let ((content (emacs-inspect (istate.object istate))))
+      (if (and (consp content)
+               (keywordp (first content)))
+          (destructuring-bind (&key (title nil title-p) (type nil type-p) content)
+              content
+            (setf (istate.content istate) content)
+            (setf (istate.title istate) (if title-p title :default))
+            (setf (istate.type istate) (if type-p type :default)))
+          (progn
+            (setf (istate.content istate) content)
+            (setf (istate.title istate) :default)
+            (setf (istate.type istate) :default))))))
 
 (defun istate>elisp (istate)
-  (list :title (prepare-title istate)
-        :id (assign-index (istate.object istate) (istate.parts istate))
-        :content (prepare-range istate 0 500)))
+  (let ((object (istate.object istate))
+        (title (prepare-inspector-title istate)))
+    (multiple-value-bind (type type-id)
+        (prepare-inspector-type istate)
+      (cond
+        ((eq type :default)
+         (let ((type-to-inspect (type-of-for-inspector object)))
+           (setf type-id (assign-index type-to-inspect (istate.parts istate)))
+           (setf type (to-string type-to-inspect :length-limit 200))))
+        ((and type
+              (not (stringp type)))
+         (setf type (to-string type :length-limit 200))))
+      (append
+       (list :content (prepare-range istate 0 500)
+             :id (assign-index object (istate.parts istate)))
+       (when title
+         (list :title title))
+       (when type
+         (list* :type type
+                (when type-id
+                  (list :type-id type-id))))))))
 
-(defun prepare-title (istate)
-  (if (istate.verbose istate)
-      (with-bindings *inspector-verbose-printer-bindings*
-        (to-string (istate.object istate)))
-      (with-string-stream (stream :length 200
-                                  :bindings *inspector-printer-bindings*)
-        (print-unreadable-object
-            ((istate.object istate) stream :type t :identity t)))))
+(defgeneric type-of-for-inspector (object)
+  (:documentation
+   "Return a type specifier suitable for display in the Emacs inspector.")
+  (:method (object)
+    (type-of object))
+  (:method ((object standard-object))
+    (class-of object))
+  (:method ((object integer))
+    ;; Some lisps report integer types as (MOD ...), which while nice
+    ;; in a sense doesn't answer the often more immediate question of
+    ;; fixnumness.
+    (cond ((typep object 'bit)
+           'bit)
+          ((typep object 'fixnum)
+           'fixnum)
+          (t 'bignum))))
+
+(defun prepare-inspector-type (istate)
+  (let ((type-spec (istate.type istate)))
+    (cond
+      ((eq type-spec :default)
+       (let ((type-to-inspect (type-of-for-inspector (istate.object istate))))
+         (values (to-string type-to-inspect :length-limit 200)
+                 (assign-index type-to-inspect (istate.parts istate)))))
+      ((and type-spec
+            (not (stringp type-spec)))
+       (values (to-string type-spec :length-limit 200)
+               nil)))))
+
+(defun prepare-inspector-title (istate)
+  (let ((object (istate.object istate))
+        (title (istate.title istate))
+        (verbose? (istate.verbose istate)))
+    (cond
+      (verbose?
+       (with-bindings *inspector-verbose-printer-bindings*
+         (to-string object :length-limit 200)))
+      ((eq title :default)
+       (with-string-stream (stream :length 200
+                                   :bindings *inspector-printer-bindings*)
+         (print-unreadable-object (object stream :type t :identity t))))
+      (title
+       (assert (stringp title))
+       title)
+      (t nil))))
 
 (defun prepare-range (istate start end)
   (let* ((range (content-range (istate.content istate) start end))
@@ -3233,9 +3310,8 @@ Return nil if there's no previous object."
           (t nil))))
 
 (defslimefun inspector-reinspect ()
-  (let ((istate *istate*))
-    (setf (istate.content istate) (emacs-inspect/istate istate))
-    (istate>elisp istate)))
+  (update-istate *istate*)
+  (istate>elisp *istate*))
 
 (defslimefun inspector-toggle-verbose ()
   "Toggle verbosity of inspected object."

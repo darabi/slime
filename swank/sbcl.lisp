@@ -98,16 +98,30 @@
     ((member :win32 *features*) nil)
     (t :fd-handler)))
 
-(defun resolve-hostname (name)
-  (car (sb-bsd-sockets:host-ent-addresses
-        (sb-bsd-sockets:get-host-by-name name))))
+
+(defun resolve-hostname (host)
+  "Returns valid IPv4 or IPv6 address for the host."
+  ;; get all IPv4 and IPv6 addresses as a list
+  (let* ((host-ents (multiple-value-list (sb-bsd-sockets:get-host-by-name host)))
+         ;; remove protocols for which we don't have an address
+         (addresses (remove-if-not #'sb-bsd-sockets:host-ent-address host-ents)))
+    ;; Return the first one or nil,
+    ;; but actually, it shouln't return nil, because
+    ;; get-host-by-name will signal NAME-SERVICE-ERROR condition
+    ;; if there isn't any address for the host.
+    (first addresses)))
+
 
 (defimplementation create-socket (host port &key backlog)
-  (let ((socket (make-instance 'sb-bsd-sockets:inet-socket
-                               :type :stream
-                               :protocol :tcp)))
+  (let* ((host-ent (resolve-hostname host))
+         (socket (make-instance (ecase (sb-bsd-sockets:host-ent-address-type host-ent)
+                                  (2 'sb-bsd-sockets:inet-socket)
+                                  (10 'sb-bsd-sockets:inet6-socket))
+                                :type :stream
+                                :protocol :tcp)))
     (setf (sb-bsd-sockets:sockopt-reuse-address socket) t)
-    (sb-bsd-sockets:socket-bind socket (resolve-hostname host) port)
+    (sb-bsd-sockets:socket-bind socket (sb-bsd-sockets:host-ent-address host-ent) port)
+
     (sb-bsd-sockets:socket-listen socket (or backlog 5))
     socket))
 
@@ -723,8 +737,9 @@ QUALITIES is an alist with (quality . value)"
                  (with-compilation-unit
                      (:source-plist (list :emacs-buffer buffer
                                           :emacs-filename filename
-                                          :emacs-string string
-                                          :emacs-position position)
+                                          :emacs-package (package-name *package*)
+                                          :emacs-position position
+                                          :emacs-string string)
                       :source-namestring filename
                       :allow-other-keys t)
                    (compile-file *buffer-tmpfile* :external-format :utf-8)))))
@@ -1250,7 +1265,11 @@ stack."
 
 (defun code-location-source-location (code-location)
   (let* ((dsource (sb-di:code-location-debug-source code-location))
-         (plist (sb-c::debug-source-plist dsource)))
+         (plist (sb-c::debug-source-plist dsource))
+         (package (getf plist :emacs-package))
+         (*package* (or (and package
+                             (find-package package))
+                        *package*)))
     (if (getf plist :emacs-buffer)
         (emacs-buffer-source-location code-location plist)
         #+#.(swank/backend:with-symbol 'debug-source-from 'sb-di)
@@ -1321,13 +1340,10 @@ stack."
                          `(:snippet ,snippet)))))))
 
 (defun code-location-debug-source-name (code-location)
-  (namestring (truename (#+#.(swank/backend:with-symbol
-                              'debug-source-name 'sb-di)
-                             sb-c::debug-source-name
-                             #-#.(swank/backend:with-symbol
-                                  'debug-source-name 'sb-di)
-                             sb-c::debug-source-namestring
-                         (sb-di::code-location-debug-source code-location)))))
+  (namestring (truename (#.(swank/backend:choose-symbol
+                            'sb-c 'debug-source-name
+                            'sb-c 'debug-source-namestring)
+                           (sb-di::code-location-debug-source code-location)))))
 
 (defun code-location-debug-source-created (code-location)
   (sb-c::debug-source-created
@@ -1593,7 +1609,10 @@ stack."
     (:debug-info (sb-kernel:%code-debug-info o)))
    `("Constants:" (:newline))
    (loop for i from sb-vm:code-constants-offset
-         below (sb-kernel:get-header-data o)
+         below
+         (#.(swank/backend:choose-symbol 'sb-kernel 'code-header-words
+                                         'sb-kernel 'get-header-data)
+            o)
          append (label-value-line i (sb-kernel:code-header-ref o i)))
    `("Code:" (:newline)
              , (with-output-to-string (s)
@@ -1635,52 +1654,39 @@ stack."
 (progn
   (defvar *thread-id-counter* 0)
 
-  (defvar *thread-id-counter-lock*
-    (sb-thread:make-mutex :name "thread id counter lock"))
+  (defvar *thread-id-counter/lock*
+    (sb-thread:make-mutex :name "swank::*thread-id-counter/lock*"))
 
   (defun next-thread-id ()
-    (sb-thread:with-mutex (*thread-id-counter-lock*)
+    (sb-thread:with-mutex (*thread-id-counter/lock*)
       (incf *thread-id-counter*)))
 
-  (defparameter *thread-id-map* (make-hash-table))
+  (defparameter *thread-id->thread-map*
+    (make-hash-table :weakness :value))
 
-  ;; This should be a thread -> id map but as weak keys are not
-  ;; supported it is id -> map instead.
-  (defvar *thread-id-map-lock*
-    (sb-thread:make-mutex :name "thread id map lock"))
+  ;; We optimize for id -> thread lookup, but it's an uninformed decision.
+  (defvar *thread-id->thread-map/lock*
+    (sb-thread:make-mutex :name "swank::*thread-id->thread-map/lock*"))
 
   (defimplementation spawn (fn &key name)
-    (sb-thread:make-thread fn :name name))
+    (sb-thread:make-thread fn :name (or name "Anonymous (Swank)")))
 
   (defimplementation thread-id (thread)
     (block thread-id
-      (sb-thread:with-mutex (*thread-id-map-lock*)
-        (loop for id being the hash-key in *thread-id-map*
-              using (hash-value thread-pointer)
+      (sb-thread:with-mutex (*thread-id->thread-map/lock*)
+        (loop for id being the hash-key in *thread-id->thread-map*
+              using (hash-value hash-value)
               do
-              (let ((maybe-thread (sb-ext:weak-pointer-value thread-pointer)))
-                (cond ((null maybe-thread)
-                       ;; the value is gc'd, remove it manually
-                       (remhash id *thread-id-map*))
-                      ((eq thread maybe-thread)
-                       (return-from thread-id id)))))
+              (when (eq thread hash-value)
+                (return-from thread-id id)))
         ;; lazy numbering
         (let ((id (next-thread-id)))
-          (setf (gethash id *thread-id-map*) (sb-ext:make-weak-pointer thread))
+          (setf (gethash id *thread-id->thread-map*) thread)
           id))))
 
   (defimplementation find-thread (id)
-    (sb-thread:with-mutex (*thread-id-map-lock*)
-      (let ((thread-pointer (gethash id *thread-id-map*)))
-        (if thread-pointer
-            (let ((maybe-thread (sb-ext:weak-pointer-value thread-pointer)))
-              (if maybe-thread
-                  maybe-thread
-                  ;; the value is gc'd, remove it manually
-                  (progn
-                    (remhash id *thread-id-map*)
-                    nil)))
-            nil))))
+    (sb-thread:with-mutex (*thread-id->thread-map/lock*)
+      (gethash id *thread-id->thread-map*)))
 
   (defimplementation thread-name (thread)
     ;; sometimes the name is not a string (e.g. NIL)
