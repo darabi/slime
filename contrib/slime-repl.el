@@ -1487,17 +1487,17 @@ expansion will be added to the REPL's history.)"
   (:handler (lambda ()
               (interactive)
               (when (slime-connected-p)
-                (slime-quit-lisp))
+                (slime-quit-inferior-lisp))
               (slime-kill-all-buffers)))
   (:one-liner "Quit all Lisps and close all SLIME buffers."))
 
 (defslime-repl-shortcut slime-repl-quit ("quit")
   (:handler (lambda ()
 	      (interactive)
-              ;; `slime-quit-lisp' determines the connection to quit
+              ;; `slime-quit-inferior-lisp' determines the connection to quit
               ;; on behalf of the REPL's `slime-buffer-connection'.
               (let ((repl-buffer (slime-output-buffer)))
-                (slime-quit-lisp)
+                (slime-quit-inferior-lisp)
                 (kill-buffer repl-buffer))))
   (:one-liner "Quit the current Lisp."))
 
