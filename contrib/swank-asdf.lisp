@@ -227,7 +227,7 @@ AND in its source-registry. (legacy name)"
       (loop for dir in asdf:*central-registry*
             for defaults = (eval dir)
             when defaults
-            do (collect-asds-in-directory defaults #'c))
+            do (asdf::collect-asds-in-directory defaults #'c))
       (asdf:ensure-source-registry)
       (if (or #+asdf3 t
 	      #-asdf3 (asdf:version-satisfies (asdf:asdf-version) "2.15"))
